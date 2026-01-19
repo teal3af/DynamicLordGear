@@ -23,7 +23,11 @@ namespace DynamicLordGear
         [SettingPropertyGroup("General", GroupOrder = 0)]
         public bool DynamicGearSelection { get; set;} = false;
 
-        [SettingPropertyBool("Update Gear for Well Equipped Lords", Order = 1, RequireRestart = false, HintText = "By default, the mod only gives gear to lords who *don't* have proper armor or weapons yet. Turn this on to have all lords periodically pick new gear. NOTE: Once they have some gear, the undergeared lords will not be recognized as undergeared again by this mod.")]
+        [SettingPropertyBool("Use Standard Lord Armor", Order = 1, RequireRestart = false, HintText = "When this is checked, lord armor still uses the standard sets whilst weapons remain dynamic.")]
+        [SettingPropertyGroup("General", GroupOrder = 0)]
+        public bool UseStandardLordArmor { get; set; } = false;
+
+        [SettingPropertyBool("Update Gear for Well Equipped Lords", Order = 2, RequireRestart = false, HintText = "By default, the mod only gives gear to lords who *don't* have proper armor or weapons yet. Turn this on to have all lords periodically pick new gear. NOTE: Once they have some gear, the undergeared lords will not be recognized as undergeared again by this mod.")]
         [SettingPropertyGroup("General", GroupOrder = 0)]
         public bool UpdateGearForWellEquippedLords { get; set; } = false;
 

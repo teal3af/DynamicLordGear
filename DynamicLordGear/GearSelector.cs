@@ -306,7 +306,7 @@ namespace DynamicLordGear
             hero.BattleEquipment[targetSlot] = new EquipmentElement(item, modifier);
         }
 
-        internal void SelectArmorForHero(MBFastRandom rng, GearCache gearCache, Hero hero, int targetGearTier)
+        internal void SelectDynamicArmorForHero(MBFastRandom rng, GearCache gearCache, Hero hero, int targetGearTier)
         {
             ItemObject? bodyOrChestArmor = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.ChestOrBodyArmor);
             ItemObject? handArmor = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.HandArmor);
@@ -367,7 +367,7 @@ namespace DynamicLordGear
             }
         }
 
-        internal void SelectWeaponsForHero(MBFastRandom rng, GearCache gearCache, LoadoutArchetypes loadoutArchetpyes, Hero hero,  int targetGearTier)
+        internal void SelectDynamicWeaponsForHero(MBFastRandom rng, GearCache gearCache, LoadoutArchetypes loadoutArchetpyes, Hero hero,  int targetGearTier)
         {
             //Default to all 1 ie everything has the same mul
             GearFavor gearFavour = new GearFavor(1.0f);
@@ -502,105 +502,84 @@ namespace DynamicLordGear
             }
         }
 
-        private bool HasDecentWeapons(Equipment equipment)
-        {
-            int weaponCount = 0;
-            bool hasTwoHander = false;
-
-            for (int i = (int)EquipmentIndex.Weapon0; i <= (int)EquipmentIndex.Weapon3; ++i)
-            {
-                EquipmentElement weapon = equipment[i];
-
-                if (weapon.Item == null)
-                {
-                    continue;
-                }
-
-                if (!weapon.Item.HasWeaponComponent)
-                {
-                    continue;
-                }
-
-                weaponCount++;
-
-                if (weapon.Item.WeaponComponent.PrimaryWeapon.IsTwoHanded)
-                {
-                    hasTwoHander = true;
-                }
-            }
-
-            return weaponCount > 1 || hasTwoHander;
-        }
-
-        private bool HasDecentArmour(Equipment equipment)
-        {
-            EquipmentElement bodyArmor = equipment.GetEquipmentFromSlot(EquipmentIndex.Body);
-            return !bodyArmor.IsEmpty && bodyArmor.Item != null && !bodyArmor.Item.IsCivilian;
-        }
-
         //This is similar to GetEquipmentRostersForHeroComeOfAge() - but flattened out and it won't return non-combtant templates even for women
-        private MBList<Equipment> GetStandardBattleEquipmentSetsForLord(Hero hero)
+        private List<Equipment> GetStandardEquipmentSetsForLord(GearCache gearCache, Hero hero, bool getCivilianEquipment)
         {
-            MBList<Equipment> returnList = new MBList<Equipment>();
-            MBList<Equipment> firstChoices = new MBList<Equipment>();
-            MBList<Equipment> fallbackChoices = new MBList<Equipment>();
+            List<List<Equipment>> listsToTry = new List<List<Equipment>>();
 
-            foreach (MBEquipmentRoster equipmentRoster in MBEquipmentRosterExtensions.All)
+            if (hero.Culture != null)
             {
-                if (!equipmentRoster.IsEquipmentTemplate())
+                GearCache.CultureLoadoutList? cultureEquipmentRoster = null;
+                if (gearCache.CultureStandardLoadouts.TryGetValue(hero.Culture.StringId, out cultureEquipmentRoster))
                 {
-                    continue;
-                }
-
-                if (equipmentRoster.EquipmentCulture != hero.Culture)
-                {
-                    continue;
-                }
-
-                if (!equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsNobleTemplate) || !equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsMediumTemplate))
-                {
-                    continue;
-                }
-
-                if (equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsNomadTemplate) || equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsWoodlandTemplate)
-                    || equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsChildEquipmentTemplate) || equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsTeenagerEquipmentTemplate)
-                    || equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsNoncombatantTemplate))
-                {
-                    continue;
-                }
-
-                bool isFallback = hero.IsFemale && !equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsFemaleTemplate);
-
-                foreach (Equipment equipment in equipmentRoster.AllEquipments)
-                {
-                    if(HasDecentWeapons(equipment) && HasDecentArmour(equipment))
+                    //Woman can fall back to male outfits but not the other way around
+                    if (hero.IsFemale)
                     {
-                        //We have to give women some armor. One of the main aims of this mod is making sure they aren't laughably underequipped in battle.
-                        if (isFallback)
+                        if (hero.IsKingdomLeader)
                         {
-                            fallbackChoices.Add(equipment);
+                            listsToTry.Add(getCivilianEquipment ? cultureEquipmentRoster.FemaleLeaderCivilian : cultureEquipmentRoster.FemaleLeaderBattle);
+                        }
+
+                        if(getCivilianEquipment)
+                        {
+                            if(hero.IsNoncombatant)
+                            {
+                                listsToTry.Add(cultureEquipmentRoster.FemaleNobleNonCombatant);
+                                listsToTry.Add(cultureEquipmentRoster.FemaleNobleCivilian);
+                            }
+                            else
+                            {
+                                listsToTry.Add(cultureEquipmentRoster.FemaleNobleCivilian);
+                                listsToTry.Add(cultureEquipmentRoster.FemaleNobleNonCombatant);
+                            }
                         }
                         else
                         {
-                            firstChoices.Add(equipment);
+                            listsToTry.Add(cultureEquipmentRoster.FemaleNobleBattle);
                         }
+                    }
+
+                    if (hero.IsKingdomLeader)
+                    {
+                        listsToTry.Add(getCivilianEquipment ? cultureEquipmentRoster.MaleLeaderCivilian : cultureEquipmentRoster.MaleLeaderBattle);
+                    }
+
+                    if (getCivilianEquipment)
+                    {
+                        if (hero.IsNoncombatant)
+                        {
+                            listsToTry.Add(cultureEquipmentRoster.MaleNobleNonCombatant);
+                            listsToTry.Add(cultureEquipmentRoster.MaleNobleCivilian);
+                        }
+                        else
+                        {
+                            listsToTry.Add(cultureEquipmentRoster.MaleNobleCivilian);
+                            listsToTry.Add(cultureEquipmentRoster.MaleNobleNonCombatant);
+                        }
+                    }
+                    else
+                    {
+                        listsToTry.Add(cultureEquipmentRoster.MaleNobleBattle);
                     }
                 }
             }
 
-            if(firstChoices.Count > 0)
-            {
-                returnList.AddRange(firstChoices);
-            }
-            else if(fallbackChoices.Count > 0)
-            {
-                returnList.AddRange(fallbackChoices);
-            }
-            else
-            {
-                MBEquipmentRoster fallbackFallback = MBEquipmentRosterExtensions.All.Find((MBEquipmentRoster x) => x.StringId == "generic_bat_dummy");
+            List<Equipment> returnList = new List<Equipment>();
 
-                if(fallbackFallback != null)
+            foreach(List<Equipment> equipList in listsToTry)
+            {
+                if (equipList.Count > 0)
+                {
+                    returnList.AddRange(equipList);
+                    break; //Only want the first non-empty list.
+                }
+            }
+
+            if(returnList.Count == 0)
+            {
+                MBEquipmentRoster? fallbackFallback = MBEquipmentRosterExtensions.All.Find((MBEquipmentRoster x) => x.StringId == (getCivilianEquipment ? "generic_civ_dummy" : "generic_bat_dummy"));
+
+                if (fallbackFallback != null)
                 {
                     returnList.AddRange(fallbackFallback.AllEquipments);
                 }
@@ -611,7 +590,7 @@ namespace DynamicLordGear
 
         private void SelectCivilianGearForWanderer(MBFastRandom rng, Hero hero)
         {
-            //Give wanderer's really crappy civilian gear
+            //Give wanderers really crappy civilian gear
             //This is the vanilla behavior - but it's also desierable because it keeps their hiring cost down
             List<Equipment> civilianEquipments = new List<Equipment>();
 
@@ -648,50 +627,104 @@ namespace DynamicLordGear
             }
         }
 
-        private void SelectGearForUndergearedHero(MBFastRandom rng, Hero hero)
+        private void SelectStandardBattleEquipmentForHero(MBFastRandom rng, GearCache gearCache, Hero hero)
         {
-            //Even if we are using dynamic gear, civilian set will still be wrong too for bugged characters
-            MBList<MBEquipmentRoster> civilianEquipmentRosterList = Campaign.Current.Models.EquipmentSelectionModel.GetEquipmentRostersForHeroComeOfAge(hero, isCivilian: true);
+            Equipment? chosenEquipment = null;
 
-            MBEquipmentRoster? randomCivilianEquipmentRoster = null;
-
-            if (!civilianEquipmentRosterList.IsEmpty())
+            //For characters that existed at the start of the game, this will revert them to what was written in the xml
+            //Unless what was written in the xml resulted in them having no combat, in which case we still give them some other loadout
+            //Kingdom leaders should go through the standard sets. If they are the OG kingdom leader, then they will just get their stuff back anyway.
+            //If they are a new kingdom leader, then they should get the king outfit.
+            if (!hero.IsKingdomLeader && hero.CharacterObject != null && hero.CharacterObject.IsOriginalCharacter)
             {
-                randomCivilianEquipmentRoster = civilianEquipmentRosterList[rng.Next(0, civilianEquipmentRosterList.Count)];
-            }
-            else
-            {
-                randomCivilianEquipmentRoster = MBEquipmentRosterExtensions.All.Find((MBEquipmentRoster x) => x.StringId == "generic_civ_dummy");
-            }
+                MBReadOnlyList<Equipment>? originalEquipment = Hacks.GetOriginalEquipmentRoster(hero.CharacterObject);
+                List<Equipment> candidateBattleEquipments = new List<Equipment>();
 
-            if (randomCivilianEquipmentRoster != null)
-            {
-                List<Equipment> allCivilianEquipmentSets = new List<Equipment>(randomCivilianEquipmentRoster.AllEquipments);
-
-                if (allCivilianEquipmentSets.Count > 0)
+                if(originalEquipment != null)
                 {
-                    Equipment randomCivilianEquipmentSet = allCivilianEquipmentSets[rng.Next(0, allCivilianEquipmentSets.Count)];
-
-                    for (int i = 0; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
+                    foreach(Equipment battleEquipment in originalEquipment.WhereQ(e => e.IsBattle))
                     {
-                        hero.CivilianEquipment[i] = new EquipmentElement(randomCivilianEquipmentSet[i].Item, randomCivilianEquipmentSet[i].ItemModifier);
+                        if (GearCache.HasDecentWeapons(battleEquipment) && GearCache.HasDecentArmour(battleEquipment))
+                        {
+                            candidateBattleEquipments.Add(battleEquipment);
+                        }
                     }
                 }
-            }
 
-            //If we aren't using dynamic gear, then apply vanilla battle gear to fix underequipped characters
-            //This isn't *fully* vanilla, as some culture's have NO female battle gear sets.
-            if (!DynamicLordGearSettings.Instance.DynamicGearSelection)
+                if(candidateBattleEquipments.Count > 0)
+                {
+                    chosenEquipment = candidateBattleEquipments[rng.Next(0, candidateBattleEquipments.Count)];
+                }
+            }
+            
+            if(chosenEquipment == null)
             {
-                MBList<Equipment> battleEquipmentSetList = GetStandardBattleEquipmentSetsForLord(hero);
+                List<Equipment> battleEquipmentSetList = GetStandardEquipmentSetsForLord(gearCache, hero, getCivilianEquipment: false);
 
                 if (battleEquipmentSetList.Count > 0)
                 {
-                    Equipment randomEquipmentSet = battleEquipmentSetList[rng.Next(0, battleEquipmentSetList.Count)];
+                    chosenEquipment = battleEquipmentSetList[rng.Next(0, battleEquipmentSetList.Count)];
+                }
+            }
 
+            if(chosenEquipment != null)
+            {
+                for (int i = 0; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
+                {
+                    hero.BattleEquipment[i] = new EquipmentElement(chosenEquipment[i].Item, chosenEquipment[i].ItemModifier);
+                }
+            }
+        }
+
+        private void SelectStandardCivilianEquipmentForHero(MBFastRandom rng, GearCache gearCache, Hero hero)
+        {
+            if(hero.IsWanderer)
+            {
+                SelectCivilianGearForWanderer(rng, hero);
+            }
+            else
+            {
+                //For characters that existed at the start of the game, this will revert them to what was written in the xml
+                Equipment? chosenEquipment = null;
+
+                //For characters that existed at the start of the game, this will revert them to what was written in the xml
+                //Unless what was written in the xml resulted in them having no combat, in which case we still give them some other loadout
+                //Kingdom leaders should go through the standard sets. If they are the OG kingdom leader, then they will just get their stuff back anyway.
+                //If they are a new kingdom leader, then they should get the king outfit.
+                if (!hero.IsKingdomLeader && hero.CharacterObject != null && hero.CharacterObject.IsOriginalCharacter)
+                {
+                    MBReadOnlyList<Equipment>? originalEquipment = Hacks.GetOriginalEquipmentRoster(hero.CharacterObject);
+                    List<Equipment> candidateCivilianEquipments = new List<Equipment>();
+
+                    if (originalEquipment != null)
+                    {
+                        foreach (Equipment civilianEquipment in originalEquipment.WhereQ(e => e.IsCivilian))
+                        {
+                            candidateCivilianEquipments.Add(civilianEquipment);
+                        }
+                    }
+
+                    if (candidateCivilianEquipments.Count > 0)
+                    {
+                        chosenEquipment = candidateCivilianEquipments[rng.Next(0, candidateCivilianEquipments.Count)];
+                    }
+                }
+
+                if (chosenEquipment == null)
+                {
+                    List<Equipment> civilianEquipmentSetList = GetStandardEquipmentSetsForLord(gearCache, hero, getCivilianEquipment: true);
+
+                    if (civilianEquipmentSetList.Count > 0)
+                    {
+                        chosenEquipment = civilianEquipmentSetList[rng.Next(0, civilianEquipmentSetList.Count)];
+                    }
+                }
+
+                if (chosenEquipment != null)
+                {
                     for (int i = 0; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
                     {
-                        hero.BattleEquipment[i] = new EquipmentElement(randomEquipmentSet[i].Item, randomEquipmentSet[i].ItemModifier);
+                        hero.CivilianEquipment[i] = new EquipmentElement(chosenEquipment[i].Item, chosenEquipment[i].ItemModifier);
                     }
                 }
             }
@@ -707,9 +740,9 @@ namespace DynamicLordGear
             if(!hero.IsWanderer)
             {
                 //Male lords with bugged gear might still have a sword
-                bool hasDecentWeapons = HasDecentWeapons(hero.BattleEquipment);
+                bool hasDecentWeapons = GearCache.HasDecentWeapons(hero.BattleEquipment);
 
-                bool hasDecentArmor = HasDecentArmour(hero.BattleEquipment);
+                bool hasDecentArmor = GearCache.HasDecentArmour(hero.BattleEquipment);
 
                 undergeared = !hasDecentWeapons || !hasDecentArmor;
 
@@ -727,21 +760,29 @@ namespace DynamicLordGear
 
             if (DynamicLordGearSettings.Instance.DynamicGearSelection)
             {
-                int targetGearTier = CalculateTargetGearTier(hero);
+                int targetGearTier = hero.IsKingdomLeader ? 8 : CalculateTargetGearTier(hero);
 
-                SelectArmorForHero(rng, gearCache, hero, targetGearTier);
+                //Leaders should still get their "king armor" even if dynamic gear is on.
+                if (hero.IsKingdomLeader || (hero.IsLord && DynamicLordGearSettings.Instance.UseStandardLordArmor))
+                {
+                    SelectStandardBattleEquipmentForHero(rng, gearCache, hero);
+                }
+                else
+                {
+                    SelectDynamicArmorForHero(rng, gearCache, hero, targetGearTier);
+                }
 
-                SelectWeaponsForHero(rng, gearCache, loadoutArchetypes, hero, targetGearTier);
+                SelectDynamicWeaponsForHero(rng, gearCache, loadoutArchetypes, hero, targetGearTier);
             }
-
-            if(hero.IsWanderer)
+            else
             {
-                SelectCivilianGearForWanderer(rng, hero);
+                SelectStandardBattleEquipmentForHero(rng, gearCache, hero);
             }
-            else if(undergeared)
-            {
-                SelectGearForUndergearedHero(rng, hero);
-            }
+
+            //For now, always apply civilian gear. For bugged lords it may be incorrect. Also, previous versions of this mod occasionally
+            //  would give lords slightly wrong civvie gear.
+            //This func will restore the hardcoded civilian gear for original characters and pick random stuff for 2nd+ generation.
+            SelectStandardCivilianEquipmentForHero(rng, gearCache, hero);
         }
     }
 }

@@ -41,4 +41,15 @@
       <Tags />
     </SubModule>
   </SubModules>
+	<Xmls>
+		<XmlNode>
+			<XmlName path="fix_equipment_sets" id="EquipmentRosters"/>
+			<IncludedGameTypes>
+				<GameType value="Campaign"/>
+				<GameType value="CampaignStoryMode"/>
+				<GameType value="CustomGame"/>
+				<GameType value = "EditorGame"/>
+			</IncludedGameTypes>
+		</XmlNode>
+	</Xmls>
 </Module>

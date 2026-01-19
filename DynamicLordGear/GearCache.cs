@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Extensions;
 using TaleWorlds.Core;
 using TaleWorlds.Engine;
@@ -65,15 +66,15 @@ namespace DynamicLordGear
 
     class GearFavor
     {
-        static private Dictionary<ItemObject.ItemTiers, float> _tierToFavour = new Dictionary<ItemObject.ItemTiers, float>()
-            {
-                { ItemObject.ItemTiers.Tier1, 0.25f },
-                { ItemObject.ItemTiers.Tier2, 0.5f },
-                { ItemObject.ItemTiers.Tier3, 0.7f },
-                { ItemObject.ItemTiers.Tier4, 0.85f },
-                { ItemObject.ItemTiers.Tier5, 0.95f },
-                { ItemObject.ItemTiers.Tier6, 1.0f },
-            };
+        static private float[] _tierToFavour = new float[]
+        {
+            0.25f,  //Tier 1
+            0.5f,   //Tier 2
+            0.7f,   //Tier 3
+            0.85f,  //Tier 4
+            0.95f,  //Tier 5
+            1.0f,   //Tier 6
+        };
 
         public void CalculateFrom(CultureGearList equipmentList)
         {
@@ -82,7 +83,7 @@ namespace DynamicLordGear
                 GearCategoryDetails? gearCategoryDetails = null;
                 if (equipmentList.GearCategories.TryGetValue(category, out gearCategoryDetails))
                 {
-                    ItemObject.ItemTiers highestTier = gearCategoryDetails.GearList.OrderByDescending(item => item.Tier).First().Tier;
+                    int highestTier = Math.Min(Math.Max((int)gearCategoryDetails.GearList.OrderByDescending(item => item.Tier).First().Tier, 0), _tierToFavour.Length);
                     Values[category] = _tierToFavour[highestTier];
                 }
                 else
@@ -129,9 +130,66 @@ namespace DynamicLordGear
 
     internal class GearCache
     {
-        public Dictionary<string, CultureGearList> CultureGear = new Dictionary<string, CultureGearList>();
-        public Dictionary<string, GearFavor> CultureFavourFromGear = new Dictionary<string, GearFavor>();
-        public Dictionary<string, GearFavor> CultureFavourFromLoadouts = new Dictionary<string, GearFavor>();
+        static internal bool HasDecentWeapons(Equipment equipment)
+        {
+            int weaponCount = 0;
+            bool hasTwoHander = false;
+
+            for (int i = (int)EquipmentIndex.Weapon0; i <= (int)EquipmentIndex.Weapon3; ++i)
+            {
+                EquipmentElement weapon = equipment[i];
+
+                if (weapon.Item == null)
+                {
+                    continue;
+                }
+
+                if (!weapon.Item.HasWeaponComponent)
+                {
+                    continue;
+                }
+
+                weaponCount++;
+
+                if (weapon.Item.WeaponComponent.PrimaryWeapon.IsTwoHanded)
+                {
+                    hasTwoHander = true;
+                }
+            }
+
+            return weaponCount > 1 || hasTwoHander;
+        }
+
+        static internal bool HasDecentArmour(Equipment equipment)
+        {
+            EquipmentElement bodyArmor = equipment.GetEquipmentFromSlot(EquipmentIndex.Body);
+            return !bodyArmor.IsEmpty && bodyArmor.Item != null && !bodyArmor.Item.IsCivilian;
+        }
+
+        public readonly Dictionary<string, CultureGearList> CultureGear = new Dictionary<string, CultureGearList>();
+        public readonly Dictionary<string, GearFavor> CultureFavourFromGear = new Dictionary<string, GearFavor>();
+        public readonly Dictionary<string, GearFavor> CultureFavourFromLoadouts = new Dictionary<string, GearFavor>();
+
+        //We break the outfits down more than native and use slightly different rules.
+        public class CultureLoadoutList
+        {
+            public readonly List<Equipment> MaleLeaderBattle = new List<Equipment>();
+            public readonly List<Equipment> MaleLeaderCivilian = new List<Equipment>();
+
+            public readonly List<Equipment> FemaleLeaderBattle = new List<Equipment>();
+            public readonly List<Equipment> FemaleLeaderCivilian = new List<Equipment>();
+
+            //Non-combatant is a civilian outfit for someone who fails is the IsCombatant() test (which 
+            public readonly List<Equipment> MaleNobleBattle = new List<Equipment>();
+            public readonly List<Equipment> MaleNobleCivilian = new List<Equipment>();
+            public readonly List<Equipment> MaleNobleNonCombatant = new List<Equipment>();
+
+            public readonly List<Equipment> FemaleNobleBattle = new List<Equipment>();
+            public readonly List<Equipment> FemaleNobleCivilian = new List<Equipment>();
+            public readonly List<Equipment> FemaleNobleNonCombatant = new List<Equipment>();
+        }
+
+        public readonly Dictionary<string, CultureLoadoutList> CultureStandardLoadouts = new Dictionary<string, CultureLoadoutList>();
 
         internal void Initialize()
         {
@@ -176,44 +234,9 @@ namespace DynamicLordGear
                     continue;
                 }
 
-                //Even if some "real" armor is civilian, we might trick our own hieuristic for "undergeared" by giving it to a lord.
-                if ((item.ItemType == ItemObject.ItemTypeEnum.BodyArmor
-                    || item.ItemType == ItemObject.ItemTypeEnum.ChestArmor
-                    || item.ItemType == ItemObject.ItemTypeEnum.HeadArmor
-                    || item.ItemType == ItemObject.ItemTypeEnum.HandArmor
-                    || item.ItemType == ItemObject.ItemTypeEnum.LegArmor
-                    || item.ItemType == ItemObject.ItemTypeEnum.Cape)
-                    && item.IsCivilian)
+                if (!IsValidItemForDynamicGearPool(item))
                 {
                     continue;
-                }
-
-                //Filter out non-horses because lords don't generally ride them and they are a pain to deal with
-                const int HorseFamily = 1;
-                if (item.ItemType == ItemObject.ItemTypeEnum.Horse)
-                {
-                    if (item.HorseComponent == null || item.HorseComponent.Monster == null)
-                    {
-                        continue;
-                    }
-
-                    if (item.HorseComponent.Monster.FamilyType != HorseFamily)
-                    {
-                        continue;
-                    }
-                }
-
-                if (item.ItemType == ItemObject.ItemTypeEnum.HorseHarness)
-                {
-                    if (item.ArmorComponent == null)
-                    {
-                        continue;
-                    }
-
-                    if (item.ArmorComponent.FamilyType != HorseFamily)
-                    {
-                        continue;
-                    }
                 }
 
                 ItemObject.ItemTiers itemTier = item.Tier;
@@ -227,85 +250,80 @@ namespace DynamicLordGear
                     cultureId = item.Culture.StringId;
                 }
 
-                if (item.HasWeaponComponent)
+                //Excludes stuff like artillery projectiles
+                if (item.HasWeaponComponent && item.ItemFlags.HasFlag(ItemFlags.CannotBePickedUp))
                 {
-                    //Excludes stuff like artillery projectiles
-                    if (item.ItemFlags.HasFlag(ItemFlags.CannotBePickedUp))
-                    {
-                        continue;
-                    }
-
-                    GearCategory[] weaponCategory = GetGearCategoriesForWeapon(item.WeaponComponent);
-
-                    for (int i = 0; i < weaponCategory.Length; ++i)
-                    {
-                        if (weaponCategory[i] != GearCategory.Null)
-                        {
-                            if (!CultureGear.ContainsKey(cultureId))
-                            {
-                                CultureGear.Add(cultureId, new CultureGearList());
-                            }
-
-                            if (!CultureGear[cultureId].GearCategories.ContainsKey(weaponCategory[i]))
-                            {
-                                CultureGear[cultureId].GearCategories.Add(weaponCategory[i], new GearCategoryDetails());
-                            }
-
-                            if (!CultureGear[cultureId].GearCategories[weaponCategory[i]].GearList.Contains(item))
-                            {
-                                CultureGear[cultureId].GearCategories[weaponCategory[i]].GearList.Add(item);
-                            }
-                        }
-                    }
+                    continue;
                 }
-                else
+
+                GearCategory[] itemGearCategories = GetGearCategoriesForItem(item);
+
+                for (int i = 0; i < itemGearCategories.Length; ++i)
                 {
-                    GearCategory category = GearCategory.Null;
-
-                    switch (item.ItemType)
-                    {
-                        case ItemObject.ItemTypeEnum.Horse:
-                            category = GearCategory.Horse;
-                            break;
-                        case ItemObject.ItemTypeEnum.HorseHarness:
-                            category = GearCategory.Saddle;
-                            break;
-                        case ItemObject.ItemTypeEnum.HeadArmor:
-                            category = GearCategory.HeadArmor;
-                            break;
-                        case ItemObject.ItemTypeEnum.ChestArmor:
-                        case ItemObject.ItemTypeEnum.BodyArmor:
-                            category = GearCategory.ChestOrBodyArmor;
-                            break;
-                        case ItemObject.ItemTypeEnum.LegArmor:
-                            category = GearCategory.LegArmor;
-                            break;
-                        case ItemObject.ItemTypeEnum.HandArmor:
-                            category = GearCategory.HandArmor;
-                            break;
-                        case ItemObject.ItemTypeEnum.Cape:
-                            category = GearCategory.NeckArmor;
-                            break;
-                        default:
-                            break;
-                    }
-
-                    if (category != GearCategory.Null)
+                    if (itemGearCategories[i] != GearCategory.Null)
                     {
                         if (!CultureGear.ContainsKey(cultureId))
                         {
                             CultureGear.Add(cultureId, new CultureGearList());
                         }
 
-                        if (!CultureGear[cultureId].GearCategories.ContainsKey(category))
+                        if (!CultureGear[cultureId].GearCategories.ContainsKey(itemGearCategories[i]))
                         {
-                            CultureGear[cultureId].GearCategories.Add(category, new GearCategoryDetails());
+                            CultureGear[cultureId].GearCategories.Add(itemGearCategories[i], new GearCategoryDetails());
                         }
 
-                        CultureGear[cultureId].GearCategories[category].GearList.Add(item);
+                        if (!CultureGear[cultureId].GearCategories[itemGearCategories[i]].GearList.Contains(item))
+                        {
+                            CultureGear[cultureId].GearCategories[itemGearCategories[i]].GearList.Add(item);
+                        }
                     }
                 }
             }
+        }
+
+        private bool IsValidItemForDynamicGearPool(ItemObject item)
+        {
+            //Even if some "real" armor is civilian, we might trick our own hieuristic for "undergeared" by giving it to a lord.
+            if ((item.ItemType == ItemObject.ItemTypeEnum.BodyArmor
+                || item.ItemType == ItemObject.ItemTypeEnum.ChestArmor
+                || item.ItemType == ItemObject.ItemTypeEnum.HeadArmor
+                || item.ItemType == ItemObject.ItemTypeEnum.HandArmor
+                || item.ItemType == ItemObject.ItemTypeEnum.LegArmor
+                || item.ItemType == ItemObject.ItemTypeEnum.Cape)
+                && item.IsCivilian)
+            {
+                return false;
+            }
+
+            //Filter out non-horses because lords don't generally ride them and they are a pain to deal with
+            const int HorseFamily = 1;
+            if (item.ItemType == ItemObject.ItemTypeEnum.Horse)
+            {
+                if (item.HorseComponent == null || item.HorseComponent.Monster == null)
+                {
+                    return false;
+                }
+
+                if (item.HorseComponent.Monster.FamilyType != HorseFamily)
+                {
+                    return false;
+                }
+            }
+
+            if (item.ItemType == ItemObject.ItemTypeEnum.HorseHarness)
+            {
+                if (item.ArmorComponent == null)
+                {
+                    return false;
+                }
+
+                if (item.ArmorComponent.FamilyType != HorseFamily)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     
         private void CalculateCulturalFavourBasedOnGear()
@@ -316,6 +334,48 @@ namespace DynamicLordGear
                 GearFavor culturalWeaponFavour = new GearFavor();
                 culturalWeaponFavour.CalculateFrom(pair.Value);
                 CultureFavourFromGear.Add(pair.Key, culturalWeaponFavour);
+            }
+        }
+
+        private GearCategory[] GetGearCategoriesForItem(ItemObject item)
+        {
+            if (item.HasWeaponComponent)
+            {
+                return GetGearCategoriesForWeapon(item.WeaponComponent);
+            }
+            else
+            {
+                GearCategory category = GearCategory.Null;
+
+                switch (item.ItemType)
+                {
+                    case ItemObject.ItemTypeEnum.Horse:
+                        category = GearCategory.Horse;
+                        break;
+                    case ItemObject.ItemTypeEnum.HorseHarness:
+                        category = GearCategory.Saddle;
+                        break;
+                    case ItemObject.ItemTypeEnum.HeadArmor:
+                        category = GearCategory.HeadArmor;
+                        break;
+                    case ItemObject.ItemTypeEnum.ChestArmor:
+                    case ItemObject.ItemTypeEnum.BodyArmor:
+                        category = GearCategory.ChestOrBodyArmor;
+                        break;
+                    case ItemObject.ItemTypeEnum.LegArmor:
+                        category = GearCategory.LegArmor;
+                        break;
+                    case ItemObject.ItemTypeEnum.HandArmor:
+                        category = GearCategory.HandArmor;
+                        break;
+                    case ItemObject.ItemTypeEnum.Cape:
+                        category = GearCategory.NeckArmor;
+                        break;
+                    default:
+                        break;
+                }
+
+                return new GearCategory[] { category };
             }
         }
 
@@ -449,12 +509,27 @@ namespace DynamicLordGear
 
             return weaponCategory;
         }
+        private void SortBattleAndCivilianEquipments(List<Equipment> battleList, List<Equipment> civilianList, MBReadOnlyList<Equipment> equipments)
+        {
+            foreach (Equipment equipment in equipments)
+            {
+                if(HasDecentWeapons(equipment) && HasDecentArmour(equipment))
+                {
+                    battleList.Add(equipment);
+                }
+                else
+                {
+                    civilianList.Add(equipment);
+                }
+            }
+        }
 
         private void CacheLordLoadouts()
         {
             CultureFavourFromLoadouts.Clear();
             Dictionary<string, int> numLoadoutsInCulture = new Dictionary<string, int>();
 
+            //Cache the valid equipment rosters for nobles for adult nobles for each culture
             foreach (MBEquipmentRoster equipmentRoster in MBEquipmentRosterExtensions.All)
             {
                 if (!equipmentRoster.IsEquipmentTemplate())
@@ -462,23 +537,103 @@ namespace DynamicLordGear
                     continue;
                 }
                     
-                if (!equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsNobleTemplate) || !equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsCombatantTemplate))
+                if (!equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsNobleTemplate))
                 {
                     continue;
                 }
 
-                if (equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsNoncombatantTemplate) 
-                    || equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsCivilianTemplate))
+                if (equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsChildEquipmentTemplate) || equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsTeenagerEquipmentTemplate))
                 {
                     continue;
                 }
 
-                if(equipmentRoster.EquipmentCulture == null)
+                if (equipmentRoster.EquipmentCulture == null)
                 {
                     continue;
                 }
 
                 string cultureId = equipmentRoster.EquipmentCulture.StringId;
+
+                if (!CultureStandardLoadouts.ContainsKey(cultureId))
+                {
+                    CultureStandardLoadouts.Add(cultureId, new CultureLoadoutList());
+                }
+
+                //Combatant seems to be used to differentiate characters, rather than outfits. So a combtant civilian outfit is the civilian outfit
+                //  for someone who fights. Whearas a noncombatant civilian outfit is the civilian outfit for someone who doesn't fight.
+                bool isCombatantRoster = equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsCombatantTemplate);
+                bool isCivilianRoster = equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsCivilianTemplate);
+                bool isNoncombatantRoster = equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsNoncombatantTemplate);
+                bool isFemaleRoster = equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsFemaleTemplate);
+
+                if (!isCombatantRoster && !isCivilianRoster && !isNoncombatantRoster)
+                {
+                    InformationMessage message = new InformationMessage($"Found noble roster that is not a combatant, civilian, or non combatant: {equipmentRoster.StringId}", new Color(1.0f,0.0f,0.0f));
+                    InformationManager.DisplayMessage(message);
+                    continue;
+                }
+
+                bool isForBattleUse = isCombatantRoster && !isCivilianRoster;
+                bool isForCivilianUse = isCivilianRoster || isNoncombatantRoster;
+
+                //Bit of a hack, but I can't find a good way of doing this.
+                //We could check the leader's of each clan, but the kingdom's aren't loaded in their initial state if going into a save.
+                bool isLeaderRoster = equipmentRoster.StringId.Contains("king_template");
+
+                //The medium templates are the ones used for gear for coming of age - don't include the rest as there's stuff like minor faction rosters and all sorts
+                //TODO - consider including some extra ones as an option
+                if (!isLeaderRoster && isForBattleUse && !equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsMediumTemplate))
+                {
+                    continue;
+                }
+                
+                /*
+                foreach(Equipment equipment in equipmentRoster.AllEquipments)
+                {
+                    //TW have messed up that tagging on some rosters, resulting in obviously female sets counting as male
+                    //Everything that suffers from this issue contains a "dress" of some kind though
+                    if (!isFemaleRoster)
+                    {
+                        EquipmentElement body = equipment[EquipmentIndex.Body];
+                        if (!body.IsEmpty && body.Item.Name.ToString().Contains("dress") || body.Item.Name.ToString().Contains("feminine"))
+                        {
+                            InformationMessage message = new InformationMessage($"Found noble roster that is not flagged as female but contains {body.Item.Name.ToString()}: {equipmentRoster.StringId}", new Color(1.0f, 0.0f, 0.0f));
+                            InformationManager.DisplayMessage(message);
+                        }
+                    }
+                }
+                */
+
+                if (isLeaderRoster)
+                {
+                    if (isFemaleRoster)
+                    {
+                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].FemaleLeaderBattle, 
+                            CultureStandardLoadouts[cultureId].FemaleLeaderCivilian, 
+                            equipmentRoster.AllEquipments);
+                    }
+                    else
+                    {
+                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].MaleLeaderBattle,
+                            CultureStandardLoadouts[cultureId].MaleLeaderCivilian,
+                            equipmentRoster.AllEquipments);
+                    }
+                }
+                else
+                {
+                    if (isFemaleRoster)
+                    {
+                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].FemaleNobleBattle,
+                            isNoncombatantRoster ? CultureStandardLoadouts[cultureId].FemaleNobleNonCombatant : CultureStandardLoadouts[cultureId].FemaleNobleCivilian,
+                            equipmentRoster.AllEquipments);
+                    }
+                    else
+                    {
+                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].MaleNobleBattle,
+                            isNoncombatantRoster ? CultureStandardLoadouts[cultureId].MaleNobleNonCombatant : CultureStandardLoadouts[cultureId].MaleNobleCivilian,
+                            equipmentRoster.AllEquipments);
+                    }
+                }
 
                 if (!CultureFavourFromLoadouts.ContainsKey(cultureId))
                 {
@@ -488,6 +643,11 @@ namespace DynamicLordGear
 
                 foreach (Equipment equipment in equipmentRoster.AllEquipments)
                 {
+                    if(!HasDecentWeapons(equipment) || !HasDecentArmour(equipment))
+                    {
+                        continue;
+                    }
+
                     numLoadoutsInCulture[cultureId]++;
 
                     EquipmentElement horse = equipment[EquipmentIndex.Horse];
@@ -497,45 +657,57 @@ namespace DynamicLordGear
                         CultureFavourFromLoadouts[cultureId].Values[GearCategory.Horse] += 1.0f;
                     }
 
-                    for (int weaponIndex = (int)EquipmentIndex.Weapon0; weaponIndex < (int)EquipmentIndex.Weapon3; ++weaponIndex)
+                    for (int equipIndex = 0; equipIndex < (int)EquipmentIndex.NumEquipmentSetSlots; ++equipIndex)
                     {
-                        EquipmentElement weapon = equipment[weaponIndex];
+                        EquipmentElement equipElement = equipment[equipIndex];
 
-                        if(weapon.Item == null || weapon.Item.WeaponComponent == null)
+                        if (equipElement.Item == null)
                         {
                             continue;
                         }
 
-                        GearCategory[] weaponCategory = GetGearCategoriesForWeapon(weapon.Item.WeaponComponent);
+                        GearCategory[] itemGearCategories = GetGearCategoriesForItem(equipElement.Item);
 
-                        for (int categoryIndex = 0; categoryIndex < weaponCategory.Length; ++categoryIndex)
+                        //Weapons alter the preferences 
+                        if (equipIndex < (int)EquipmentIndex.NumPrimaryWeaponSlots)
                         {
-                            if (weaponCategory[categoryIndex] != GearCategory.Null)
+                            for (int categoryIndex = 0; categoryIndex < itemGearCategories.Length; ++categoryIndex)
                             {
-                                CultureFavourFromLoadouts[cultureId].Values[weaponCategory[categoryIndex]] += 1.0f;
+                                if (itemGearCategories[categoryIndex] != GearCategory.Null)
+                                {
+                                    CultureFavourFromLoadouts[cultureId].Values[itemGearCategories[categoryIndex]] += 1.0f;
+                                }
                             }
                         }
 
-                        for (int i = 0; i < weaponCategory.Length; ++i)
+
+
+                        //We can still use the leader to add their weight to preferences, but we shouldn't add their gear to the pool.
+                        //If it's common gear amongst lords, it'll be added anyway.
+                        if (!isLeaderRoster && IsValidItemForDynamicGearPool(equipElement.Item))
                         {
-                            if (weaponCategory[i] != GearCategory.Null)
+                            for (int i = 0; i < itemGearCategories.Length; ++i)
                             {
-                                if (!CultureGear.ContainsKey(cultureId))
+                                if (itemGearCategories[i] != GearCategory.Null)
                                 {
-                                    CultureGear.Add(cultureId, new CultureGearList());
-                                }
+                                    if (!CultureGear.ContainsKey(cultureId))
+                                    {
+                                        CultureGear.Add(cultureId, new CultureGearList());
+                                    }
 
-                                if (!CultureGear[cultureId].GearCategories.ContainsKey(weaponCategory[i]))
-                                {
-                                    CultureGear[cultureId].GearCategories.Add(weaponCategory[i], new GearCategoryDetails());
-                                }
+                                    if (!CultureGear[cultureId].GearCategories.ContainsKey(itemGearCategories[i]))
+                                    {
+                                        CultureGear[cultureId].GearCategories.Add(itemGearCategories[i], new GearCategoryDetails());
+                                    }
 
-                                if (!CultureGear[cultureId].GearCategories[weaponCategory[i]].GearList.Contains(weapon.Item))
-                                {
-                                    CultureGear[cultureId].GearCategories[weaponCategory[i]].GearList.Add(weapon.Item);
+                                    if (!CultureGear[cultureId].GearCategories[itemGearCategories[i]].GearList.Contains(equipElement.Item))
+                                    {
+                                        CultureGear[cultureId].GearCategories[itemGearCategories[i]].GearList.Add(equipElement.Item);
+                                    }
                                 }
                             }
                         }
+
                     }
                 }
             }

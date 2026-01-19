@@ -6,9 +6,12 @@ using System.Text;
 using System.Threading.Tasks;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.CampaignBehaviors;
+using TaleWorlds.CampaignSystem.Extensions;
 using TaleWorlds.CampaignSystem.ViewModelCollection;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Encyclopedia.Pages;
 using TaleWorlds.Core;
+using TaleWorlds.Library;
+using TaleWorlds.Localization;
 
 namespace DynamicLordGear
 {
@@ -50,11 +53,11 @@ namespace DynamicLordGear
                     shouldShowAsCivilian = true;
                 }
 
-                //When outside a party, they are chilling out somewhere
+                //If they are leading a party or out in the field somewhere, show them in battle gear.
                 if(hero.PartyBelongedTo == null || hero.IsPrisoner)
                 {
-                    //Clan members should still be in their gear as the player manages that.
-                    if(hero.Clan != Hero.MainHero.Clan)
+                    //Fallback to the native behaviour of checking if they are counted as a noncombatant
+                    if(hero.IsNoncombatant)
                     {
                         shouldShowAsCivilian = true;
                     }
@@ -97,5 +100,27 @@ namespace DynamicLordGear
             return true;
         }
     }
+
+    static internal class Hacks
+    {
+        static internal MBReadOnlyList<Equipment>? GetOriginalEquipmentRoster(BasicCharacterObject characterObject)
+        {
+            var propertyInfo = AccessTools.Property(typeof(BasicCharacterObject), "AllEquipments");
+            var getter = propertyInfo.GetGetMethod(true);
+
+            if (getter != null)
+            {
+
+            }
+            object? returnVal = getter.Invoke(characterObject, null);
+
+            if (returnVal != null && returnVal is MBReadOnlyList<Equipment>)
+            {
+                return returnVal as MBReadOnlyList<Equipment>;
+            }
+            return null;
+        }
+    }
+    
 
 }
