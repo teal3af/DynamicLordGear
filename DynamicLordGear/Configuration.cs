@@ -110,6 +110,10 @@ namespace DynamicLordGear
         [SettingPropertyGroup("Gear Selection", GroupOrder = 7)]
         public bool GearChoice_ApplyItemModifiers { get; set; } = false;
 
+        [SettingPropertyInteger("Random Seed", 0, int.MaxValue, "0", Order = 22, RequireRestart = false, HintText = "There is some randomness to gear selection. You can shift this to get different results.")]
+        [SettingPropertyGroup("Gear Selection", GroupOrder = 7)]
+        public int RandomSeed {get; set;} = 0;
+
         [SettingPropertyButton("Reselect all hero gear now", Order = 22, Content = "GO!", RequireRestart = false, HintText = "Click to select gear for all NPC heroes right now.")]
         [SettingPropertyGroup("Commands", GroupOrder = 8)]
         public Action ReselectAllGearAction { get; set; } = (() => { Campaign.Current?.GetCampaignBehavior<DynamicLordGearBehavior>()?.SelectGearForAllNPCHeroes(onSessionStart:false); });

@@ -1,16 +1,9 @@
-﻿using Helpers;
-using Serilog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TaleWorlds.CampaignSystem;
-using TaleWorlds.CampaignSystem.Actions;
 using TaleWorlds.CampaignSystem.Extensions;
-using TaleWorlds.CampaignSystem.ViewModelCollection.WeaponCrafting.WeaponDesign;
 using TaleWorlds.Core;
-using TaleWorlds.Core.ViewModelCollection.Generic;
 using TaleWorlds.Engine;
 using TaleWorlds.Library;
 using TaleWorlds.LinQuick;
@@ -20,6 +13,63 @@ namespace DynamicLordGear
 {
     internal class GearSelector
     {
+        //We use seeded randoms to pick gear, so it won't change unless inputs change.
+        //However certain options may change the number of randoms generated, which will throw off anything that comes after.
+        //So we always generate the same set to prevent this.
+        internal enum GearRandomNumber : int
+        {
+            HeadArmor = 0,
+            BodyArmor,
+            LegArmor,
+            HandArmor,
+            NeckArmor,
+            Horse,
+            Saddle,
+            Weapon0,
+            Weapon1,
+            Weapon2,
+            Weapon3,
+            BattleSet,
+            CivilianSet,
+            COUNT
+        }
+
+        internal class GearRandomNumbers
+        {
+            private int[] _values = new int[(int)GearRandomNumber.COUNT];
+
+            internal GearRandomNumbers(uint seed1, uint seed2)
+            {
+                MBFastRandom random = new MBFastRandom(seed1 + seed2);
+
+                for(int i = 0; i < (int)GearRandomNumber.COUNT; ++i)
+                {
+                    _values[i] = random.Next();
+                }
+            }
+
+            internal int Get(GearRandomNumber id, int exclusiveMax)
+            {
+                if(exclusiveMax <= 0)
+                {
+                    return 0;
+                }
+
+                return _values[(int)id] % exclusiveMax;
+            }
+
+            internal int Get(GearRandomNumber id, int inclusiveMin, int exclusiveMax)
+            {
+                if (exclusiveMax <= inclusiveMin)
+                {
+                    return inclusiveMin;
+                }
+
+                return inclusiveMin + Get(id, exclusiveMax - inclusiveMin);
+            }
+        }
+
+
         internal int CalculateTargetGearTier(Hero hero)
         {
             float gearTier = 0.0f;
@@ -167,7 +217,7 @@ namespace DynamicLordGear
             return mergedCulturalFavor.Mul(1.0f / totalWeight);
         }
 
-        internal ItemObject? GetAppropriateGear(MBFastRandom rng, GearCache gearCache, Hero hero, int targetGearTier, GearCategory gearCategory)
+        internal ItemObject? GetAppropriateGear(GearRandomNumbers rng, GearRandomNumber rngId, GearCache gearCache, Hero hero, int targetGearTier, GearCategory gearCategory)
         {
             //TODO - Could precaulate this instead of doing it in the call
             //could batch hero, gear tier, rng into one structure - gear selector params
@@ -270,7 +320,7 @@ namespace DynamicLordGear
 
             if (itemMatches.Count > 0)
             {
-                return itemMatches[rng.Next(itemMatches.Count)];
+                return itemMatches[rng.Get(rngId, itemMatches.Count)];
             }
 
             return null;
@@ -306,13 +356,13 @@ namespace DynamicLordGear
             hero.BattleEquipment[targetSlot] = new EquipmentElement(item, modifier);
         }
 
-        internal void SelectDynamicArmorForHero(MBFastRandom rng, GearCache gearCache, Hero hero, int targetGearTier)
+        internal void SelectDynamicArmorForHero(GearRandomNumbers rng, GearCache gearCache, Hero hero, int targetGearTier)
         {
-            ItemObject? bodyOrChestArmor = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.ChestOrBodyArmor);
-            ItemObject? handArmor = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.HandArmor);
-            ItemObject? legArmor = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.LegArmor);
-            ItemObject? headArmor = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.HeadArmor);
-            ItemObject? neckArmor = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.NeckArmor);
+            ItemObject? bodyOrChestArmor = GetAppropriateGear(rng, GearRandomNumber.BodyArmor, gearCache, hero, targetGearTier, GearCategory.ChestOrBodyArmor);
+            ItemObject? handArmor = GetAppropriateGear(rng, GearRandomNumber.HandArmor, gearCache, hero, targetGearTier, GearCategory.HandArmor);
+            ItemObject? legArmor = GetAppropriateGear(rng, GearRandomNumber.LegArmor, gearCache, hero, targetGearTier, GearCategory.LegArmor);
+            ItemObject? headArmor = GetAppropriateGear(rng, GearRandomNumber.HeadArmor, gearCache, hero, targetGearTier, GearCategory.HeadArmor);
+            ItemObject? neckArmor = GetAppropriateGear(rng, GearRandomNumber.NeckArmor, gearCache, hero, targetGearTier, GearCategory.NeckArmor);
 
             if (bodyOrChestArmor != null)
             {
@@ -367,7 +417,7 @@ namespace DynamicLordGear
             }
         }
 
-        internal void SelectDynamicWeaponsForHero(MBFastRandom rng, GearCache gearCache, LoadoutArchetypes loadoutArchetpyes, Hero hero,  int targetGearTier)
+        internal void SelectDynamicWeaponsForHero(GearRandomNumbers rng, GearCache gearCache, LoadoutArchetypes loadoutArchetpyes, Hero hero,  int targetGearTier)
         {
             //Default to all 1 ie everything has the same mul
             GearFavor gearFavour = new GearFavor(1.0f);
@@ -402,21 +452,21 @@ namespace DynamicLordGear
                 switch (chosenArchetype.Loadout[i])
                 {
                     case LoadoutWeaponArchetype.OneHanded:
-                        appropriateItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.OneHanded);
+                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.OneHanded);
                         break;
                     case LoadoutWeaponArchetype.TwoHanded:
-                        appropriateItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.TwoHanded);
+                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.TwoHanded);
                         break;
                     case LoadoutWeaponArchetype.PolearmThrust:
-                        appropriateItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.PolearmLance : GearCategory.PolearmSpear);
+                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.PolearmLance : GearCategory.PolearmSpear);
                         break;
                     case LoadoutWeaponArchetype.PolearmSwing:
-                        appropriateItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.PolearmSwing);
+                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.PolearmSwing);
                         break;
                     case LoadoutWeaponArchetype.Throwing:
                         if (throwingItem == null)
                         {
-                            throwingItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.Throwing);
+                            throwingItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.Throwing);
                         }
 
                         if (throwingItem != null)
@@ -427,11 +477,11 @@ namespace DynamicLordGear
                     case LoadoutWeaponArchetype.Ranged:
                         if (preferCrossbow)
                         {
-                            appropriateItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseCrossbow : GearCategory.Crossbow);
+                            appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseCrossbow : GearCategory.Crossbow);
                         }
                         else
                         {
-                            appropriateItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseBow : GearCategory.Bow);
+                            appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseBow : GearCategory.Bow);
                         }
                         break;
                     case LoadoutWeaponArchetype.Ammo:
@@ -439,11 +489,11 @@ namespace DynamicLordGear
                         {
                             if (preferCrossbow)
                             {
-                                ammoItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.Bolts);
+                                ammoItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.Bolts);
                             }
                             else
                             {
-                                ammoItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.Arrows);
+                                ammoItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.Arrows);
                             }
                         }
 
@@ -454,7 +504,7 @@ namespace DynamicLordGear
                         break;
                     case LoadoutWeaponArchetype.Shield:
                         {
-                            appropriateItem = GetAppropriateGear(rng, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseShield : GearCategory.Shield);
+                            appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseShield : GearCategory.Shield);
                         }
                         break;
                     case LoadoutWeaponArchetype.Empty:
@@ -489,8 +539,8 @@ namespace DynamicLordGear
 
             if (chosenArchetype.Mounted)
             {
-                ItemObject? horse = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.Horse);
-                ItemObject? saddle = GetAppropriateGear(rng, gearCache, hero, targetGearTier, GearCategory.Saddle);
+                ItemObject? horse = GetAppropriateGear(rng, GearRandomNumber.Horse, gearCache, hero, targetGearTier, GearCategory.Horse);
+                ItemObject? saddle = GetAppropriateGear(rng, GearRandomNumber.Saddle, gearCache, hero, targetGearTier, GearCategory.Saddle);
 
                 hero.BattleEquipment[EquipmentIndex.Horse] = new EquipmentElement(horse);
                 hero.BattleEquipment[EquipmentIndex.HorseHarness] = new EquipmentElement(saddle);
@@ -588,7 +638,7 @@ namespace DynamicLordGear
             return returnList;
         }
 
-        private void SelectCivilianGearForWanderer(MBFastRandom rng, Hero hero)
+        private void SelectCivilianGearForWanderer(GearRandomNumbers rng, Hero hero)
         {
             //Give wanderers really crappy civilian gear
             //This is the vanilla behavior - but it's also desierable because it keeps their hiring cost down
@@ -611,7 +661,7 @@ namespace DynamicLordGear
 
             if (civilianEquipments.Count > 0)
             {
-                Equipment randomCivilianEquipmentSet = civilianEquipments[rng.Next(0, civilianEquipments.Count)];
+                Equipment randomCivilianEquipmentSet = civilianEquipments[rng.Get(GearRandomNumber.CivilianSet, civilianEquipments.Count)];
 
                 for (int i = 0; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
                 {
@@ -627,7 +677,7 @@ namespace DynamicLordGear
             }
         }
 
-        private void SelectStandardBattleEquipmentForHero(MBFastRandom rng, GearCache gearCache, Hero hero)
+        private void SelectStandardBattleEquipmentForHero(GearRandomNumbers rng, GearCache gearCache, Hero hero)
         {
             Equipment? chosenEquipment = null;
 
@@ -653,7 +703,7 @@ namespace DynamicLordGear
 
                 if(candidateBattleEquipments.Count > 0)
                 {
-                    chosenEquipment = candidateBattleEquipments[rng.Next(0, candidateBattleEquipments.Count)];
+                    chosenEquipment = candidateBattleEquipments[rng.Get(GearRandomNumber.BattleSet,candidateBattleEquipments.Count)];
                 }
             }
             
@@ -663,7 +713,7 @@ namespace DynamicLordGear
 
                 if (battleEquipmentSetList.Count > 0)
                 {
-                    chosenEquipment = battleEquipmentSetList[rng.Next(0, battleEquipmentSetList.Count)];
+                    chosenEquipment = battleEquipmentSetList[rng.Get(GearRandomNumber.BattleSet, battleEquipmentSetList.Count)];
                 }
             }
 
@@ -676,7 +726,7 @@ namespace DynamicLordGear
             }
         }
 
-        private void SelectStandardCivilianEquipmentForHero(MBFastRandom rng, GearCache gearCache, Hero hero)
+        private void SelectStandardCivilianEquipmentForHero(GearRandomNumbers rng, GearCache gearCache, Hero hero)
         {
             if(hero.IsWanderer)
             {
@@ -706,7 +756,7 @@ namespace DynamicLordGear
 
                     if (candidateCivilianEquipments.Count > 0)
                     {
-                        chosenEquipment = candidateCivilianEquipments[rng.Next(0, candidateCivilianEquipments.Count)];
+                        chosenEquipment = candidateCivilianEquipments[rng.Get(GearRandomNumber.CivilianSet, candidateCivilianEquipments.Count)];
                     }
                 }
 
@@ -716,7 +766,7 @@ namespace DynamicLordGear
 
                     if (civilianEquipmentSetList.Count > 0)
                     {
-                        chosenEquipment = civilianEquipmentSetList[rng.Next(0, civilianEquipmentSetList.Count)];
+                        chosenEquipment = civilianEquipmentSetList[rng.Get(GearRandomNumber.CivilianSet, civilianEquipmentSetList.Count)];
                     }
                 }
 
@@ -732,7 +782,7 @@ namespace DynamicLordGear
 
         internal void SelectGearForHero(GearCache gearCache, LoadoutArchetypes loadoutArchetypes, Hero hero, bool onSessionStart = false)
         {
-            MBFastRandom rng = new MBFastRandom(hero.Id.InternalValue);
+            GearRandomNumbers rng = new GearRandomNumbers(hero.Id.InternalValue, (uint)DynamicLordGearSettings.Instance.RandomSeed);
 
             bool undergeared = false;
 
@@ -781,7 +831,7 @@ namespace DynamicLordGear
 
             //For now, always apply civilian gear. For bugged lords it may be incorrect. Also, previous versions of this mod occasionally
             //  would give lords slightly wrong civvie gear.
-            //This func will restore the hardcoded civilian gear for original characters and pick random stuff for 2nd+ generation.
+            //This func will restore the hand-picked civilian gear for original characters and pick random stuff for 2nd+ generation.
             SelectStandardCivilianEquipmentForHero(rng, gearCache, hero);
         }
     }
