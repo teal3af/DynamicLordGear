@@ -36,6 +36,8 @@ namespace DynamicLordGear
         [HarmonyPostfix]
         static void Postfix(EncyclopediaHeroPageVM __instance)
         {
+            bool previewMode = true;
+
             __instance.IsLoadingOver = false;
 
             Hero? hero = __instance.Obj as Hero;
@@ -48,25 +50,54 @@ namespace DynamicLordGear
                 //being combat leaders
                 bool shouldShowAsCivilian = false;
 
-                if(hero.IsNotable)
+                if(!previewMode)
                 {
-                    shouldShowAsCivilian = true;
-                }
-
-                //If they are leading a party or out in the field somewhere, show them in battle gear.
-                if(hero.PartyBelongedTo == null || hero.IsPrisoner)
-                {
-                    //Fallback to the native behaviour of checking if they are counted as a noncombatant
-                    if(hero.IsNoncombatant)
+                    if (hero.IsNotable)
                     {
                         shouldShowAsCivilian = true;
                     }
+
+                    //If they are leading a party or out in the field somewhere, show them in battle gear.
+                    if (hero.PartyBelongedTo == null || hero.IsPrisoner)
+                    {
+                        //Fallback to the native behaviour of checking if they are counted as a noncombatant
+                        if (hero.IsNoncombatant)
+                        {
+                            shouldShowAsCivilian = true;
+                        }
+                    }
+                }
+
+                if(previewMode)
+                {
+                    string equipmentInfoText = $"GUID: {hero.Id.InternalValue}\nBATTLE EQUIPMENT: ";
+
+                    for (int i = (int)EquipmentIndex.WeaponItemBeginSlot; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
+                    {
+                        if (hero.BattleEquipment[i].IsEmpty)
+                        {
+                            equipmentInfoText += "EMPTY";
+                        }
+                        else
+                        {
+                            equipmentInfoText += hero.BattleEquipment[i].Item.Name.ToString();
+                        }
+
+                        equipmentInfoText += " | ";
+                    }
+
+                    __instance.InformationText = equipmentInfoText;
                 }
 
                 __instance.HeroCharacter.FillFrom(hero, -1, shouldShowAsCivilian, true);
+
                 __instance.HeroCharacter.SetEquipment(EquipmentIndex.Horse, default(EquipmentElement));
                 __instance.HeroCharacter.SetEquipment(EquipmentIndex.HorseHarness, default(EquipmentElement));
-                __instance.HeroCharacter.SetEquipment(EquipmentIndex.Head, default(EquipmentElement));
+
+                if (!previewMode)
+                {
+                    __instance.HeroCharacter.SetEquipment(EquipmentIndex.Head, default(EquipmentElement));
+                }
             }
 
             __instance.IsLoadingOver = true;
@@ -110,14 +141,14 @@ namespace DynamicLordGear
 
             if (getter != null)
             {
+                object? returnVal = getter.Invoke(characterObject, null);
 
+                if (returnVal != null && returnVal is MBReadOnlyList<Equipment>)
+                {
+                    return returnVal as MBReadOnlyList<Equipment>;
+                }
             }
-            object? returnVal = getter.Invoke(characterObject, null);
 
-            if (returnVal != null && returnVal is MBReadOnlyList<Equipment>)
-            {
-                return returnVal as MBReadOnlyList<Equipment>;
-            }
             return null;
         }
     }

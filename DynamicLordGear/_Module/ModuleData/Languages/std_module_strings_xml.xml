@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" type="string">
+    <tags>
+        <tag language="English" />
+    </tags>
+    <strings>
+		
+		<!--Module Title-->
+		<string id="MOOWFpsg" text="Dynamic Lord Gear"/>
+		
+		<!--Mod Settings Page-->
+        <string id="g13Bnmlu" text="General" />
+        <string id="WZH5IWes" text="Dynamic Gear Selection" />
+        <string id="QJGWqibY" text="When this is checked, gear is selected dynamically based on the options below. Otherwise gear is always picked from an existing lord template for their culture." />
+        <string id="9AoflS63" text="Use Standard Lord Armor" />
+        <string id="QIbG4sfV" text="When this is checked, lord armor still uses the standard sets whilst weapons remain dynamic." />	
+        <string id="vZSP7FRp" text="Update Gear for Well Equipped Lords" />
+        <string id="vAwBaFSH" text="By default, the mod only gives gear to lords who *don't* have proper armor or weapons yet. Turn this on to have all lords periodically pick new gear. NOTE: Once they have some gear, the undergeared lords will not be recognized as undergeared again by this mod." />
+        
+		<string id="AdF5XMGG" text="Wanderers" />
+        <string id="myCH5pXc" text="Apply to Wanderers" />
+        <string id="hahdDbRK" text="Give wanderers gear. NOTE: This will make them more expensive to hire, as price is calculated based on their gear. You can sell their stuff though." />
+        <string id="Gu8ytEWr" text="Match Wanderer Gear Tier to Player's" />
+        <string id="UcTkM7mD" text="Scale wanderer gear with the player's clan tier, making them start out better equipped (and more expensive) as play progresses." />
+        <string id="ormjhhKU" text="Wanderer Clan Tier" />
+        <string id="Fev7BJ6m" text="When picking equipment, treat wanderers as if this is their clan tier. IGNORED if above option is checked." />
+        <string id="avsnc7TC" text="Give Wanderers Cheap Worn Out Gear" />
+        <string id="DBUaRJcm" text="Matches vanilla behaviour. Apply special worn/rusty/old modifiers to all wanderer gear. These modifiers are different to the normal variants because they lower sell price far more than the combat stats. This will make wanderers a lot cheaper to hire (and preventing exploits!)" />
+    
+		<string id="BeEeKFQc" text="Gear Tier Calculation" />
+		<string id="gnl105ml" text="Minimum Gear Tier" />
+		<string id="CpO4gJt3" text="Don't give lords gear of a lower tier than this, if possible." />
+		<string id="vSEp4s63" text="Combat Skill Weight" />
+		<string id="q7L7LenY" text="When calculating the gear tier for a lord, how much to factor in their combat ability." />
+		<string id="a7UDaCDR" text="Clan Tier Weight" />
+		<string id="wXzyt98b" text="When calculating the gear tier for a lord, how much to factor in their clan's tier." />
+		
+		<string id="1w91iyzc" text="Hero Affinity Calculation"/>
+		<string id="LLkekt8e" text="Skill Weight"/>
+		<string id="GuvfRzTN" text="When calculating a hero's affinity for gear, how much weight to give to their skills."/>
+		<string id="DOLKediw" text="Culture Weight"/>
+		<string id="Puu9DY2V" text="When calculating a hero's affinity for gear, how much weight to give to their culture."/>
+		
+		<string id="SI9lTZoA" text="Skill Components"/>
+		<string id="yF9737v3" text="Skill Point weight"/>
+		<string id="TmWbtIGD" text="When calculating skill based affinity, how much weight to give to raw skill points."/>
+		<string id="Rn2nrVMG" text="Focus Point weight"/>
+		<string id="phhvYJ8s" text="When calculating skill based affinity, how much weight to give to focus points."/>
+		<string id="mL7wouql" text="Attribute Weight"/>
+		<string id="RIOPy7Ux" text="When calculating skill based affinity, how much weight to give to base attributes."/>
+
+		<string id="bWs7kmyH" text="Culture Components"/>
+		<string id="dLyhZkQh" text="Personal Culture Weight"/>
+		<string id="yPMGYqg2" text="When calculating affinity from the hero's culture, how much weight to give to their personal culture."/>
+		<string id="bPbAJvKW" text="Clan Culture Weight"/>
+		<string id="otVMgg2J" text="When calculating affinity from the hero's culture, how much weight to give to their clan's culture."/>
+		<string id="8FdP5CRn" text="Father Culture Weight"/>
+		<string id="4GyclVxa" text="When calculating affinity from the hero's culture, how much weight to give to their father's culture."/>
+		<string id="6XFwYECd" text="Mother Culture Weight"/>
+		<string id="WjfMddpt" text="When calculating affinity from the hero's culture, how much weight to give to their mother's culture"/>
+
+		<string id="tjQOtPV1" text="Advanced"/>
+		<string id="5UFhxXsc" text="Shield Affinity Multiplier"/>
+		<string id="zKhndZIo" text="Use this to encourage or discourage lords from choosing loadouts that include shields. 1 is neutral. At 0, lords will only use shields to fill slots. At 2, only lords with awful 1h skill will not take a shield."/>
+		<string id="6VQKzFDr" text="Extra Ammo Affinity Multiplier"/>
+		<string id="0XW8RHno" text="Use this to encourage or discourage lords from choosing loadouts that include *extra* ammo. 1 is neutral. At 0, only very over specialised lords will take extra ammo. At 2, lords with good ranged stats will often prioritize ammo over shields etc."/>
+		<string id="BS6qmVwq" text="Empty Slot Affinity Multiplier"/>
+		<string id="U4e9Qy3Q" text="Use this to encourage or discourage lords from choosing loadouts that contain empty slots. 1 is neutral. At 0, lords will almost never leave slots empty. At 2, lords will be quite likely to leave empty slots to focus on their strongest weapon skills."/>
+
+		<string id="OxVpG9LI" text="Culture Affinity Calculation"/>
+		<string id="tkdmVjtm" text="Gear Catalog Weight"/>
+		<string id="fslctQ2y" text="When calculating a culture's affinity for gear, how much weight to give to the gear tagged as theirs."/>
+		<string id="m9NTUJBm" text="Original Lord Loadout Weight"/>
+		<string id="QZQKv0P9" text="When calculating a culture's affinity for gear, how much weight to give to the loadouts assigned to the original lords in the data."/>
+
+		<string id="ZY38dMdT" text="Gear Selection"/>
+		<string id="X7SgVRH2" text="Culture Strictness"/>
+		<string id="9ecMqw2O" text="How rigidily will lords stick to their culture(s) when picking gear. 0 = no cultural preference at all. 2 = strong bias to own culture gear 5 = will only pick gear outside culture when absolutely necessary."/>
+		<string id="OAI8Bc5n" text="Apply Item Modifiers"/>
+		<string id="KhEwC2lk" text="Sometimes the system will pick items that don't perfectly match the target tier. This setting will apply modifiers such as masterwork, balanced, rusty, etc to upgrade or downgrade them to fit better."/>
+		<string id="qhWutrGS" text="Random Seed"/>
+		<string id="Gwsa4M4u" text="There is some randomness to gear selection. You can shift this to get different results."/>
+
+		<string id="IM6PJpKJ" text="Commands"/>
+		<string id="y7uUdloT" text="Reselect all hero gear now"/>
+		<string id="VgX5lhdx" text="GO!"/>
+		<string id="wvh4qXHh" text="Click to select gear for all NPC heroes right now."/>
+		
+		<!--Mod Options Preset Titles-->
+		<string id="y2zMpfSw" text="Fix Ungeared Lords"/>
+		<string id="59zwUAtF" text="Balanced"/>
+		<string id="tWs6t8OM" text="Skill Focus"/>
+		<string id="AgkmthgM" text="Culture Focus"/>
+		<string id="EV54yFHi" text="Optimized Misfits"/>
+		
+		<!--Warning / Error Messages-->
+		<string id="hQz0ceVt" text="Found noble roster that is not a combatant, civilian, or non combatant: {DLG_AMBIGEOUS_ROSTER_ID}"/>
+	
+	</strings>
+</base>

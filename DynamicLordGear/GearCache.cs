@@ -4,10 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.CharacterDevelopment;
 using TaleWorlds.CampaignSystem.Extensions;
 using TaleWorlds.Core;
 using TaleWorlds.Engine;
 using TaleWorlds.Library;
+using TaleWorlds.Localization;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.View;
 using TaleWorlds.ObjectSystem;
@@ -568,7 +570,8 @@ namespace DynamicLordGear
 
                 if (!isCombatantRoster && !isCivilianRoster && !isNoncombatantRoster)
                 {
-                    InformationMessage message = new InformationMessage($"Found noble roster that is not a combatant, civilian, or non combatant: {equipmentRoster.StringId}", new Color(1.0f,0.0f,0.0f));
+                    MBTextManager.SetTextVariable("DLG_AMBIGEOUS_ROSTER_ID", equipmentRoster.StringId);
+                    InformationMessage message = new InformationMessage(new TextObject("{=hQz0ceVt}Found noble roster that is not a combatant, civilian, or non combatant: {DLG_AMBIGEOUS_ROSTER_ID}").ToString(), new Color(1.0f,0.0f,0.0f));
                     InformationManager.DisplayMessage(message);
                     continue;
                 }

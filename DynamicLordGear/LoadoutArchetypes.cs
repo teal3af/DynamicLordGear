@@ -25,73 +25,127 @@ namespace DynamicLordGear
         private List<LoadoutArchetype> _loadoutArchetypes = new List<LoadoutArchetype>();
         internal void PopulateLoadouts()
         {
-            //Archetypes are based on the vanilla loadout "rules" for heroes which seem to be:
+            //Archetypes are based on the vanilla loadout "rules" for heroes, loosened up a bit:
             //  Max one ranged weapon type
-            //  Max two melee weapons
-            //  Max three weapons total, but fourth slot can be used for extra ammo if free
+            //  Minimum one melee weapon
+            //  Spears and lances must always have a backup weapon - the loadout has to be usable in sieges, keep battles etc without modification
             //  Unlike the player, empty slots are acceptable and sometimes desierable to force the AI to focus on their strengths
-            //  Spears and lances must always have a backup weapon - the loadout has to work in sieges etc without modification
 
             //Foot Melee with shields
             //=========================
 
-            //+Two Hander
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing));
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing));
+            //Sword and Board focus
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
 
-            //+Spear
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Throwing));
+            //Sword and board with a two-hander
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing));
 
-            //+More Throwing
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            //Swiss army infantry
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.TwoHanded));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.PolearmSwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing));
+
+            //Sword and board with a spear
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Throwing));
+
+            //Shielded skirmishers with a two-hander
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
 
             //Foot Melee without shield
             //=========================
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
 
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            //One-hander backup
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
 
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            //Dedicated two-hander
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
 
             //Foot Ranged
             //=========================
 
-            //Shield
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
+            //Shielded Archer or Crossbow
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
 
-            //Extra Ammo
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
-            _loadoutArchetypes.Add(new LoadoutArchetype(false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
+            //Archer with two melee weapons
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
 
-            //Mounted Melee
+            //Swap shield/extra weapon for more ammo
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: false, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
+
+            //Mounted Melee with Shields
             //=========================
+
+            //Sword and Board focus
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+
+            //Sword and Board with a two-hander
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing));
 
             //Classic Lancer Cav
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Empty));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Throwing));
 
-            //Decicated Glaive Cav
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            //Swiss army cavalry
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.TwoHanded));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.PolearmSwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing));
 
-            //Throwing weapon enjoyers
+            //Shield Skirmishers with a two-hander
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+
+            //Mounted Melee without shields
+            //=============================
+
+            //Two-hander with backup
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+
+            //Decicated Two-hander
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty, LoadoutWeaponArchetype.Empty));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
+
+            //Mounted Ranged
             //=========================
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing, LoadoutWeaponArchetype.Throwing));
 
-            //Mounted ranged variants
-            //=========================
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
-            _loadoutArchetypes.Add(new LoadoutArchetype(true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
+            //Shielded horse archer
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Shield, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
+
+            //Horse archer with two melee weapons
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmThrust, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo));
+
+            //Horse archer with extra ammo
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.OneHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.TwoHanded, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
+            _loadoutArchetypes.Add(new LoadoutArchetype(mounted: true, LoadoutWeaponArchetype.PolearmSwing, LoadoutWeaponArchetype.Ranged, LoadoutWeaponArchetype.Ammo, LoadoutWeaponArchetype.Ammo));
 
         }
 
@@ -143,6 +197,8 @@ namespace DynamicLordGear
 
             float rangedAffinity = preferCrossbow ? crossbowAffinity : bowAffinity;
 
+            bool hasAmmoAlready = false;
+
             for (int i = 0; i < 4; ++i)
             {
                 switch (Loadout[i])
@@ -166,10 +222,18 @@ namespace DynamicLordGear
                         totalAffinity += rangedAffinity;
                         break;
                     case LoadoutWeaponArchetype.Ammo:
-                        totalAffinity += rangedAffinity * DynamicLordGearSettings.Instance.Loadout_AmmoAffinityMul;
+                        if(hasAmmoAlready)
+                        {
+                            totalAffinity += rangedAffinity * DynamicLordGearSettings.Instance.HeroAffinity_ExtraAmmoAffinityMul;
+                        }
+                        else
+                        {
+                            totalAffinity += rangedAffinity;
+                            hasAmmoAlready = true;
+                        }
                         break;
                     case LoadoutWeaponArchetype.Shield:
-                        totalAffinity += culturalAffinities.Values[GearCategory.OneHanded] * DynamicLordGearSettings.Instance.Loadout_ShieldAffinityMul;
+                        totalAffinity += heroAffinities.Values[HeroAffinity.OneHanded] * culturalAffinities.Values[GearCategory.Shield] * DynamicLordGearSettings.Instance.HeroAffinity_ShieldAffinityMul;
                         break;
                     case LoadoutWeaponArchetype.Empty:
                         numEmpty++;
@@ -185,7 +249,7 @@ namespace DynamicLordGear
             {
                 int numFilled = 4 - numEmpty;
                 float avgAffinityPerSlot = totalAffinity / numFilled;
-                totalAffinity += avgAffinityPerSlot * numEmpty * DynamicLordGearSettings.Instance.Loadout_EmptySlotMul;
+                totalAffinity += avgAffinityPerSlot * numEmpty * DynamicLordGearSettings.Instance.HeroAffinity_EmptySlotMul;
             }
 
             float mountedCulturalAffinity = culturalAffinities.Values[GearCategory.Horse];
