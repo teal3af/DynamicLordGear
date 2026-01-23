@@ -12,6 +12,7 @@ using TaleWorlds.CampaignSystem.ViewModelCollection.Encyclopedia.Pages;
 using TaleWorlds.Core;
 using TaleWorlds.Library;
 using TaleWorlds.Localization;
+using static DynamicLordGear.GearSelector;
 
 namespace DynamicLordGear
 {
@@ -30,13 +31,27 @@ namespace DynamicLordGear
         }
     }
 
+    [HarmonyPatch(typeof(CampaignUIHelper), "IsHeroInformationHidden")]
+    static internal class Patch_CampaignUIHelper_IsHeroInformationHidden
+    {
+        [HarmonyPostfix]
+        static void Postfix(Hero hero, ref TextObject disableReason, ref bool __result)
+        {
+            if(DynamicLordGearSettings.Instance.ShowDebugInfoInEncyclopedia)
+            {
+                __result = false;
+            }
+        }
+    }
+
+
     [HarmonyPatch(typeof(EncyclopediaHeroPageVM), "Refresh")]
     static internal class Patch_EncyclopediaHeroPageVM_Refresh
     {
         [HarmonyPostfix]
         static void Postfix(EncyclopediaHeroPageVM __instance)
         {
-            bool previewMode = true;
+            bool previewMode = DynamicLordGearSettings.Instance.ShowDebugInfoInEncyclopedia;
 
             __instance.IsLoadingOver = false;
 
@@ -70,6 +85,16 @@ namespace DynamicLordGear
 
                 if(previewMode)
                 {
+                    DynamicLordGearBehavior dynamicLordGearBehaviour = TaleWorlds.CampaignSystem.Campaign.Current.CampaignBehaviorManager.GetBehavior<DynamicLordGearBehavior>();
+                    GearSelectionParams gearSelectionParams = new GearSelectionParams(hero, dynamicLordGearBehaviour.GearCache);
+
+                    HeroAffinities heroAffinities = new HeroAffinities(1.0f);
+
+                    if (DynamicLordGearSettings.Instance.HeroAffinity_SkillWeight > 0.0f)
+                    {
+                        heroAffinities.SetFromHero(hero, DynamicLordGearSettings.Instance.HeroAffinity_SkillWeight);
+                    }
+
                     string equipmentInfoText = $"GUID: {hero.Id.InternalValue}\nBATTLE EQUIPMENT: ";
 
                     for (int i = (int)EquipmentIndex.WeaponItemBeginSlot; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
@@ -84,6 +109,30 @@ namespace DynamicLordGear
                         }
 
                         equipmentInfoText += " | ";
+                    }
+
+                    equipmentInfoText += "\nHERO AFFINITIES: ";
+
+                    foreach (HeroAffinity affinity in (HeroAffinity[])Enum.GetValues(typeof(HeroAffinity)))
+                    {
+                        equipmentInfoText += $"{affinity.ToString()}: {heroAffinities.Values[affinity]:F2}";
+
+                        equipmentInfoText += " | ";
+                    }
+
+                    equipmentInfoText += "\nCULTURE AFFINITIES: ";
+
+
+                    GearFavor? cultureFavor = GearSelector.GetCultureGearFavorForHero(gearSelectionParams);
+
+                    if(cultureFavor != null)
+                    {
+                        foreach (GearCategory category in (GearCategory[])Enum.GetValues(typeof(GearCategory)))
+                        {
+                            equipmentInfoText += $"{category.ToString()}: {(cultureFavor.Values.ContainsKey(category) ? cultureFavor.Values[category] : 0):F2}";
+
+                            equipmentInfoText += " | ";
+                        }
                     }
 
                     __instance.InformationText = equipmentInfoText;

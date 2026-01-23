@@ -23,6 +23,9 @@ namespace DynamicLordGear
         Null = -1,
         OneHanded = 0,
         TwoHanded,
+        //The AI can't really utelize these the same way the player can. If they have a shield, it's a 1h weapon. If they don't then it's a two hander.
+        //So we have to seperate them out so they aren't used in confusing contexts.
+        OneOrTwoHanded, 
 
         //Polearms are split into three types based on how they are used. Some are categorized as a Spear *and* a Lance.
         PolearmSpear, //One handed polearms - excluding those with couch lance mode
@@ -141,12 +144,7 @@ namespace DynamicLordGear
             {
                 EquipmentElement weapon = equipment[i];
 
-                if (weapon.Item == null)
-                {
-                    continue;
-                }
-
-                if (!weapon.Item.HasWeaponComponent)
+                if (weapon.Item == null || weapon.Item.WeaponComponent == null || weapon.Item.WeaponComponent.PrimaryWeapon == null)
                 {
                     continue;
                 }
@@ -156,6 +154,7 @@ namespace DynamicLordGear
                 if (weapon.Item.WeaponComponent.PrimaryWeapon.IsTwoHanded)
                 {
                     hasTwoHander = true;
+                    break;
                 }
             }
 
@@ -166,6 +165,26 @@ namespace DynamicLordGear
         {
             EquipmentElement bodyArmor = equipment.GetEquipmentFromSlot(EquipmentIndex.Body);
             return !bodyArmor.IsEmpty && bodyArmor.Item != null && !bodyArmor.Item.IsCivilian;
+        }
+
+        static internal bool HasShield(Equipment equipment)
+        {
+            for (int i = (int)EquipmentIndex.Weapon0; i <= (int)EquipmentIndex.Weapon3; ++i)
+            {
+                EquipmentElement weapon = equipment[i];
+
+                if (weapon.Item == null || weapon.Item.WeaponComponent == null || weapon.Item.WeaponComponent.PrimaryWeapon == null)
+                {
+                    continue;
+                }
+
+                if (weapon.Item.WeaponComponent.PrimaryWeapon.IsShield)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public readonly Dictionary<string, CultureGearList> CultureGear = new Dictionary<string, CultureGearList>();
@@ -393,8 +412,22 @@ namespace DynamicLordGear
             bool hasMountOnlyUsage = false;
             //Foot-only usages are things like spear brace and throwing spear throw
             bool hasFootOnlyUsage = false;
+
+            bool hasOneHandedMode = false;
+            bool hasTwoHandedMode = false;
+
             foreach (WeaponComponentData weaponMode in weaponComponent.Weapons)
             {
+                if(weaponMode.IsOneHanded)
+                {
+                    hasOneHandedMode = true;
+                }
+                
+                if(weaponMode.IsTwoHanded)
+                {
+                    hasTwoHandedMode = true;
+                }
+
                 ItemObject.ItemUsageSetFlags usageSetFlags = MBItem.GetItemUsageSetFlags(weaponMode.ItemUsage);
 
                 if (usageSetFlags.HasFlag(ItemObject.ItemUsageSetFlags.RequiresMount))
@@ -488,13 +521,24 @@ namespace DynamicLordGear
                     case WeaponClass.OneHandedAxe:
                     case WeaponClass.OneHandedSword:
                     case WeaponClass.Mace:
-                        weaponCategory[0] = GearCategory.OneHanded;
-                        break;
-
                     case WeaponClass.TwoHandedAxe:
                     case WeaponClass.TwoHandedSword:
                     case WeaponClass.TwoHandedMace:
-                        weaponCategory[0] = GearCategory.TwoHanded;
+
+                        //Count melee weapons as both if they fit both
+                        if(hasOneHandedMode && hasTwoHandedMode)
+                        {
+                            weaponCategory[0] = GearCategory.OneOrTwoHanded;
+                        }
+                        else if(hasOneHandedMode)
+                        {
+                            weaponCategory[0] = GearCategory.OneHanded;
+                        }
+                        else if (hasTwoHandedMode)
+                        {
+                            weaponCategory[0] = GearCategory.TwoHanded;
+                        }
+
                         break;
 
                     case WeaponClass.Bolt:
@@ -584,11 +628,7 @@ namespace DynamicLordGear
                 bool isLeaderRoster = equipmentRoster.StringId.Contains("king_template");
 
                 //The medium templates are the ones used for gear for coming of age - don't include the rest as there's stuff like minor faction rosters and all sorts
-                //TODO - consider including some extra ones as an option
-                if (!isLeaderRoster && isForBattleUse && !equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsMediumTemplate))
-                {
-                    continue;
-                }
+                bool useAsStandardLoadout = isLeaderRoster || !isForBattleUse || equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsMediumTemplate);
                 
                 /*
                 foreach(Equipment equipment in equipmentRoster.AllEquipments)
@@ -607,34 +647,37 @@ namespace DynamicLordGear
                 }
                 */
 
-                if (isLeaderRoster)
+                if(useAsStandardLoadout)
                 {
-                    if (isFemaleRoster)
+                    if(isLeaderRoster)
                     {
-                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].FemaleLeaderBattle, 
-                            CultureStandardLoadouts[cultureId].FemaleLeaderCivilian, 
-                            equipmentRoster.AllEquipments);
-                    }
+                        if (isFemaleRoster)
+                        {
+                            SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].FemaleLeaderBattle,
+                                CultureStandardLoadouts[cultureId].FemaleLeaderCivilian,
+                                equipmentRoster.AllEquipments);
+                        }
+                        else
+                        {
+                            SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].MaleLeaderBattle,
+                                CultureStandardLoadouts[cultureId].MaleLeaderCivilian,
+                                equipmentRoster.AllEquipments);
+                            }
+                        }
                     else
                     {
-                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].MaleLeaderBattle,
-                            CultureStandardLoadouts[cultureId].MaleLeaderCivilian,
-                            equipmentRoster.AllEquipments);
-                    }
-                }
-                else
-                {
-                    if (isFemaleRoster)
-                    {
-                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].FemaleNobleBattle,
-                            isNoncombatantRoster ? CultureStandardLoadouts[cultureId].FemaleNobleNonCombatant : CultureStandardLoadouts[cultureId].FemaleNobleCivilian,
-                            equipmentRoster.AllEquipments);
-                    }
-                    else
-                    {
-                        SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].MaleNobleBattle,
-                            isNoncombatantRoster ? CultureStandardLoadouts[cultureId].MaleNobleNonCombatant : CultureStandardLoadouts[cultureId].MaleNobleCivilian,
-                            equipmentRoster.AllEquipments);
+                        if (isFemaleRoster)
+                        {
+                            SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].FemaleNobleBattle,
+                                isNoncombatantRoster ? CultureStandardLoadouts[cultureId].FemaleNobleNonCombatant : CultureStandardLoadouts[cultureId].FemaleNobleCivilian,
+                                equipmentRoster.AllEquipments);
+                        }
+                        else
+                        {
+                            SortBattleAndCivilianEquipments(CultureStandardLoadouts[cultureId].MaleNobleBattle,
+                                isNoncombatantRoster ? CultureStandardLoadouts[cultureId].MaleNobleNonCombatant : CultureStandardLoadouts[cultureId].MaleNobleCivilian,
+                                equipmentRoster.AllEquipments);
+                        }
                     }
                 }
 
@@ -643,6 +686,15 @@ namespace DynamicLordGear
                     CultureFavourFromLoadouts[cultureId] = new GearFavor(0.0f);
                     numLoadoutsInCulture[cultureId] = 0;
                 }
+
+                //Scan the battle sets for items
+                bool useForFavorCalculations = isLeaderRoster || (isForBattleUse && equipmentRoster.HasEquipmentFlags(EquipmentFlags.IsMediumTemplate));
+
+                if (!useForFavorCalculations)
+                {
+                    continue;
+                }
+
 
                 foreach (Equipment equipment in equipmentRoster.AllEquipments)
                 {
@@ -682,8 +734,6 @@ namespace DynamicLordGear
                                 }
                             }
                         }
-
-
 
                         //We can still use the leader to add their weight to preferences, but we shouldn't add their gear to the pool.
                         //If it's common gear amongst lords, it'll be added anyway.

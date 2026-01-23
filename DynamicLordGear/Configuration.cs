@@ -34,129 +34,139 @@ namespace DynamicLordGear
         [SettingPropertyGroup("{=g13Bnmlu}General", GroupOrder = 0)]
         public bool UpdateGearForWellEquippedLords { get; set; } = false;
 
-        [SettingPropertyBool("{=myCH5pXc}Apply to Wanderers", Order = 4, RequireRestart = false,
-            HintText = "{=hahdDbRK}Give wanderers gear. NOTE: This will make them more expensive to hire, as price is calculated based on their gear. You can sell their stuff though.")]
+        [SettingPropertyBool("{=8XX7jAvS}Exclude Minor Factions", Order = 4, RequireRestart = false,
+            HintText = "{=R4X6lARD}Minor factions have distinct loadouts that this mod will mess around with. Keep this unchecked to exclude them from dynamic gear.")]
+        [SettingPropertyGroup("{=g13Bnmlu}General", GroupOrder = 0)]
+        public bool ExcludeMinorFactions { get; set; } = true;
+
+        [SettingPropertyBool("{=myCH5pXc}Apply to Wanderers", Order = 5, RequireRestart = false,
+            HintText = "{=hahdDbRK}Give wanderers starting gear. NOTE: This will make them more expensive to hire, as price is calculated based on their gear. You can sell their stuff though.")]
         [SettingPropertyGroup("{=AdF5XMGG}Wanderers", GroupOrder = 1)]
         public bool ApplyToWanderers { get; set; } = false;
 
-        [SettingPropertyBool("{=Gu8ytEWr}Match Wanderer Gear Tier to Player's", Order = 5, RequireRestart = false,
+        [SettingPropertyBool("{=Gu8ytEWr}Match Wanderer Gear Tier to Player's", Order = 6, RequireRestart = false,
             HintText = "{=UcTkM7mD}Scale wanderer gear with the player's clan tier, making them start out better equipped (and more expensive) as play progresses.")]
         [SettingPropertyGroup("{=AdF5XMGG}Wanderers", GroupOrder = 1)]
         public bool MatchWandererGearTierToPlayer { get; set; } = false;
 
-        [SettingPropertyInteger("{=ormjhhKU}Wanderer Clan Tier", minValue: 1, maxValue: 6, "0", Order = 6, RequireRestart = false,
+        [SettingPropertyInteger("{=ormjhhKU}Wanderer Clan Tier", minValue: 1, maxValue: 7, "0", Order = 6, RequireRestart = false,
             HintText = "{=Fev7BJ6m}When picking equipment, treat wanderers as if this is their clan tier. IGNORED if above option is checked.")]
         [SettingPropertyGroup("{=AdF5XMGG}Wanderers", GroupOrder = 1)]
         public int WandererClanTier { get; set; } = 2;
 
-        [SettingPropertyBool("{=avsnc7TC}Give Wanderers Cheap Worn Out Gear", Order = 7, RequireRestart = false,
+        [SettingPropertyBool("{=avsnc7TC}Give Wanderers Cheap Worn Out Gear", Order = 8, RequireRestart = false,
             HintText = "{=DBUaRJcm}Matches vanilla behaviour. Apply special worn/rusty/old modifiers to all wanderer gear. These modifiers are different to the normal variants because they lower sell price far more than the combat stats. This will make wanderers a lot cheaper to hire (and preventing exploits!)")]
         [SettingPropertyGroup("{=AdF5XMGG}Wanderers", GroupOrder = 1)]
         public bool GiveWanderersWornOutGear { get; set; } = true;
 
-        [SettingPropertyInteger("{=gnl105ml}Minimum Gear Tier", minValue: 1, maxValue: 6, "0", Order = 8, RequireRestart = false,
+        [SettingPropertyInteger("{=gnl105ml}Minimum Gear Tier", minValue: 1, maxValue: 6, "0", Order = 9, RequireRestart = false,
             HintText = "{=CpO4gJt3}Don't give lords gear of a lower tier than this, if possible.")]
         [SettingPropertyGroup("{=BeEeKFQc}Gear Tier Calculation", GroupOrder = 2)]
         public int GearTier_Minimum { get; set; } = 6;
 
-        [SettingPropertyFloatingInteger("{=vSEp4s63}Combat Skill Weight", 0f, 1f, "0.0", Order = 9, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=vSEp4s63}Combat Skill Weight", 0f, 1f, "0.0", Order = 10, RequireRestart = false,
             HintText = "{=q7L7LenY}When calculating the gear tier for a lord, how much to factor in their combat ability.")]
         [SettingPropertyGroup("{=BeEeKFQc}Gear Tier Calculation", GroupOrder = 2)]
         public float GearTier_HeroSkillWeight { get; set; } = 0.5f;
 
-        [SettingPropertyFloatingInteger("{=a7UDaCDR}Clan Tier Weight", 0f, 1f, "0.0", Order = 10, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=a7UDaCDR}Clan Tier Weight", 0f, 1f, "0.0", Order = 11, RequireRestart = false,
             HintText = "{=wXzyt98b}When calculating the gear tier for a lord, how much to factor in their clan's tier.")]
         [SettingPropertyGroup("{=BeEeKFQc}Gear Tier Calculation", GroupOrder = 2)]
         public float GearTier_ClanTierWeight { get; set; } = 1.0f;
 
-        [SettingPropertyFloatingInteger("{=LLkekt8e}Skill Weight", 0f, 1f, "0.0", Order = 11, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=LLkekt8e}Skill Weight", 0f, 1f, "0.0", Order = 12, RequireRestart = false,
             HintText = "{=GuvfRzTN}When calculating a hero's affinity for gear, how much weight to give to their skills.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation", GroupOrder = 3)]
         public float HeroAffinity_SkillWeight { get; set; } = 1.0f;
 
-        [SettingPropertyFloatingInteger("{=DOLKediw}Culture Weight", 0f, 1f, "0.0", Order = 12, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=DOLKediw}Culture Weight", 0f, 1f, "0.0", Order = 13, RequireRestart = false,
             HintText = "{=Puu9DY2V}When calculating a hero's affinity for gear, how much weight to give to their culture.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation", GroupOrder = 3)]
         public float HeroAffinity_CultureWeight { get; set; } = 1.0f;
 
-        [SettingPropertyFloatingInteger("{=yF9737v3}Skill Point weight", 0f, 1f, "0.0", Order = 13, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=yF9737v3}Skill Point weight", 0f, 1f, "0.0", Order = 14, RequireRestart = false,
             HintText = "{=TmWbtIGD}When calculating skill based affinity, how much weight to give to raw skill points.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=SI9lTZoA}Skill Components", GroupOrder = 4)]
         public float HeroAffinity_SkillpointWeight { get; set; } = 1.0f;
 
-        [SettingPropertyFloatingInteger("{=Rn2nrVMG}Focus Point weight", 0f, 1f, "0.0", Order = 14, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=Rn2nrVMG}Focus Point weight", 0f, 1f, "0.0", Order = 15, RequireRestart = false,
             HintText = "{=phhvYJ8s}When calculating skill based affinity, how much weight to give to focus points.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=SI9lTZoA}Skill Components", GroupOrder = 4)]
         public float HeroAffinity_FocusPointWeight { get; set; } = 0.6f;
 
-        [SettingPropertyFloatingInteger("{=mL7wouql}Attribute Weight", 0f, 1f, "0.0", Order = 15, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=mL7wouql}Attribute Weight", 0f, 1f, "0.0", Order = 16, RequireRestart = false,
             HintText = "{=RIOPy7Ux}When calculating skill based affinity, how much weight to give to base attributes.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=SI9lTZoA}Skill Components", GroupOrder = 4)]
         public float HeroAffinity_AttributeWeight { get; set; } = 0.3f;
 
-        [SettingPropertyFloatingInteger("{=dLyhZkQh}Personal Culture Weight", 0f, 1f, "0.0", Order = 16, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=dLyhZkQh}Personal Culture Weight", 0f, 1f, "0.0", Order = 17, RequireRestart = false,
             HintText = "{=yPMGYqg2}When calculating affinity from the hero's culture, how much weight to give to their personal culture.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=bWs7kmyH}Culture Components", GroupOrder = 5)]
         public float HeroAffinity_PersonalCultureWeight { get; set; } = 1.0f;
 
-        [SettingPropertyFloatingInteger("{=bPbAJvKW}Clan Culture Weight", 0f, 1f, "0.0", Order = 17, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=bPbAJvKW}Clan Culture Weight", 0f, 1f, "0.0", Order = 18, RequireRestart = false,
             HintText = "{=otVMgg2J}When calculating affinity from the hero's culture, how much weight to give to their clan's culture.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=bWs7kmyH}Culture Components", GroupOrder = 5)]
         public float HeroAffinity_ClanCultureWeight { get; set; } = 0.5f;
 
-        [SettingPropertyFloatingInteger("{=8FdP5CRn}Father Culture Weight", 0f, 1f, "0.0", Order = 18, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=8FdP5CRn}Father Culture Weight", 0f, 1f, "0.0", Order = 19, RequireRestart = false,
             HintText = "{=4GyclVxa}When calculating affinity from the hero's culture, how much weight to give to their father's culture.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=bWs7kmyH}Culture Components", GroupOrder = 5)]
         public float HeroAffinity_FatherCultureWeight { get; set; } = 0.75f;
 
-        [SettingPropertyFloatingInteger("{=6XFwYECd}Mother Culture Weight", 0f, 1f, "0.0", Order = 19, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=6XFwYECd}Mother Culture Weight", 0f, 1f, "0.0", Order = 20, RequireRestart = false,
             HintText = "{=WjfMddpt}When calculating affinity from the hero's culture, how much weight to give to their mother's culture")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=bWs7kmyH}Culture Components", GroupOrder = 5)]
         public float HeroAffinity_MotherCultureWeight { get; set; } = 0.75f;
 
-        [SettingPropertyFloatingInteger("{=5UFhxXsc}Shield Affinity Multiplier", 0f, 2f, "0.00", Order = 20, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=5UFhxXsc}Shield Affinity Multiplier", 0f, 2f, "0.00", Order = 21, RequireRestart = false,
             HintText = "{=zKhndZIo}Use this to encourage or discourage lords from choosing loadouts that include shields. 1 is neutral. At 0, lords will only use shields to fill slots. At 2, only lords with awful 1h skill will not take a shield.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=tjQOtPV1}Advanced", GroupOrder = 6)]
-        public float HeroAffinity_ShieldAffinityMul { get; set; } = 1.15f;
+        public float HeroAffinity_ShieldAffinityMul { get; set; } = 1.05f;
 
-        [SettingPropertyFloatingInteger("{=6VQKzFDr}Extra Ammo Affinity Multiplier", 0f, 2f, "0.00", Order = 21, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=6VQKzFDr}Extra Ammo Affinity Multiplier", 0f, 2f, "0.00", Order = 22, RequireRestart = false,
             HintText = "{=0XW8RHno}Use this to encourage or discourage lords from choosing loadouts that include *extra* ammo. 1 is neutral. At 0, only very over specialised lords will take extra ammo. At 2, lords with good ranged stats will often prioritize ammo over shields etc.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=tjQOtPV1}Advanced", GroupOrder = 6)]
-        public float HeroAffinity_ExtraAmmoAffinityMul { get; set; } = 0.85f;
+        public float HeroAffinity_ExtraAmmoAffinityMul { get; set; } = 0.95f;
 
-        [SettingPropertyFloatingInteger("{=BS6qmVwq}Empty Slot Affinity Multiplier", 0f, 2f, "0.00", Order = 22, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=BS6qmVwq}Empty Slot Affinity Multiplier", 0f, 2f, "0.00", Order = 23, RequireRestart = false,
             HintText = "{=U4e9Qy3Q}Use this to encourage or discourage lords from choosing loadouts that contain empty slots. 1 is neutral. At 0, lords will almost never leave slots empty. At 2, lords will be quite likely to leave empty slots to focus on their strongest weapon skills.")]
         [SettingPropertyGroup("{=1w91iyzc}Hero Affinity Calculation/{=tjQOtPV1}Advanced", GroupOrder = 6)]
-        public float HeroAffinity_EmptySlotMul { get; set; } = 0.70f;
+        public float HeroAffinity_EmptySlotMul { get; set; } = 0.50f;
 
-        [SettingPropertyFloatingInteger("{=tkdmVjtm}Gear Catalog Weight", 0f, 1f, "0.0", Order = 23, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=tkdmVjtm}Gear Catalog Weight", 0f, 1f, "0.0", Order = 24, RequireRestart = false,
             HintText = "{=fslctQ2y}When calculating a culture's affinity for gear, how much weight to give to the gear tagged as theirs.")]
         [SettingPropertyGroup("{=OxVpG9LI}Culture Affinity Calculation", GroupOrder = 7)]
         public float CultureAffinity_GearCatalogWeight { get; set; } = 1.0f;
-        [SettingPropertyFloatingInteger("{=m9NTUJBm}Original Lord Loadout Weight", 0f, 1f, "0.0", Order = 24, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=m9NTUJBm}Original Lord Loadout Weight", 0f, 1f, "0.0", Order = 25, RequireRestart = false,
             HintText = "{=QZQKv0P9}When calculating a culture's affinity for gear, how much weight to give to the loadouts assigned to the original lords in the data.")]
         [SettingPropertyGroup("{=OxVpG9LI}Culture Affinity Calculation", GroupOrder = 7)]
         public float CultureAffinity_LordLoadoutWeight { get; set; } = 1.0f;
 
-        [SettingPropertyFloatingInteger("{=X7SgVRH2}Culture Strictness", 0f, 5f, "0.0", Order = 25, RequireRestart = false,
+        [SettingPropertyFloatingInteger("{=X7SgVRH2}Culture Strictness", 0f, 5f, "0.0", Order = 26, RequireRestart = false,
             HintText = "{=9ecMqw2O}How rigidily will lords stick to their culture(s) when picking gear. 0 = no cultural preference at all. 2 = strong bias to own culture gear 5 = will only pick gear outside culture when absolutely necessary.")]
         [SettingPropertyGroup("{=ZY38dMdT}Gear Selection", GroupOrder = 8)]
         public float GearChoice_CultureStrictness { get; set; } = 2.0f;
 
-        [SettingPropertyBool("{=OAI8Bc5n}Apply Item Modifiers", Order = 26, RequireRestart = false,
+        [SettingPropertyBool("{=OAI8Bc5n}Apply Item Modifiers", Order = 27, RequireRestart = false,
             HintText = "{=KhEwC2lk}Sometimes the system will pick items that don't perfectly match the target tier. This setting will apply modifiers such as masterwork, balanced, rusty, etc to upgrade or downgrade them to fit better.")]
         [SettingPropertyGroup("{=ZY38dMdT}Gear Selection", GroupOrder = 8)]
         public bool GearChoice_ApplyItemModifiers { get; set; } = false;
 
-        [SettingPropertyInteger("{=qhWutrGS}Random Seed", 0, int.MaxValue, "0", Order = 27, RequireRestart = false,
+        [SettingPropertyInteger("{=qhWutrGS}Random Seed", 0, int.MaxValue, "0", Order = 28, RequireRestart = false,
             HintText = "{=Gwsa4M4u}There is some randomness to gear selection. You can shift this to get different results.")]
         [SettingPropertyGroup("{=ZY38dMdT}Gear Selection", GroupOrder = 8)]
         public int RandomSeed {get; set;} = 0;
 
-        [SettingPropertyButton("{=y7uUdloT}Reselect all hero gear now", Order = 28, Content = "{=VgX5lhdx}GO!", RequireRestart = false,
+        [SettingPropertyButton("{=y7uUdloT}Reselect all hero gear now", Order = 29, Content = "{=VgX5lhdx}GO!", RequireRestart = false,
             HintText = "{=wvh4qXHh}Click to select gear for all NPC heroes right now.")]
         [SettingPropertyGroup("{=IM6PJpKJ}Commands", GroupOrder = 9)]
         public Action ReselectAllGearAction { get; set; } = (() => { Campaign.Current?.GetCampaignBehavior<DynamicLordGearBehavior>()?.SelectGearForAllNPCHeroes(onSessionStart:false); });
+
+        [SettingPropertyBool("{=439Q6Eoi}Show Debug Info In Encylopedia", Order = 30, RequireRestart = false,
+            HintText = "{=fk8IgNlH}When checked, the encylopedia will show all lords as discovered and detailed information about lord equipment and affinities. For debugging or if you're really trying to fine tune your sliders.")]
+        [SettingPropertyGroup("{=6FfuFbJS}Debug", GroupOrder = 10)]
+        public bool ShowDebugInfoInEncyclopedia { get; set; } = false;
 
         public bool DEBUG_ApplyToPlayer = false;
         public bool DEBUG_ApplyToPlayerClan = false;

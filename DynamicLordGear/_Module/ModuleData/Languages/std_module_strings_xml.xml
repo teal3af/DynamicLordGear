@@ -16,7 +16,9 @@
         <string id="QIbG4sfV" text="When this is checked, lord armor still uses the standard sets whilst weapons remain dynamic." />	
         <string id="vZSP7FRp" text="Update Gear for Well Equipped Lords" />
         <string id="vAwBaFSH" text="By default, the mod only gives gear to lords who *don't* have proper armor or weapons yet. Turn this on to have all lords periodically pick new gear. NOTE: Once they have some gear, the undergeared lords will not be recognized as undergeared again by this mod." />
-        
+		<string id ="8XX7jAvS" text ="Exclude Minor Factions"/>
+		<string id ="R4X6lARD" text ="Minor factions have distinct loadouts that this mod will mess around with. Keep this unchecked to exclude them from dynamic gear."/>
+		
 		<string id="AdF5XMGG" text="Wanderers" />
         <string id="myCH5pXc" text="Apply to Wanderers" />
         <string id="hahdDbRK" text="Give wanderers gear. NOTE: This will make them more expensive to hire, as price is calculated based on their gear. You can sell their stuff though." />
@@ -85,6 +87,10 @@
 		<string id="y7uUdloT" text="Reselect all hero gear now"/>
 		<string id="VgX5lhdx" text="GO!"/>
 		<string id="wvh4qXHh" text="Click to select gear for all NPC heroes right now."/>
+
+		<string id="6FfuFbJS" text="Debug"/>
+		<string id="439Q6Eoi" text="Show Debug Info In Encylopedia"/>
+		<string id="fk8IgNlH" text="When checked, the encylopedia will show all lords as discovered and detailed information about lord equipment and affinities. For debugging or if you're really trying to fine tune your sliders."/>
 		
 		<!--Mod Options Preset Titles-->
 		<string id="y2zMpfSw" text="Fix Ungeared Lords"/>

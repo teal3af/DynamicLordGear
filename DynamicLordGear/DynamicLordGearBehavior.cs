@@ -15,7 +15,7 @@ namespace DynamicLordGear
     {
         private static Harmony? _harmony = null;
         private bool _sessionStarted = false;
-        private GearCache _gearCache = new GearCache();
+        public readonly GearCache GearCache = new GearCache();
         private GearSelector _gearSelector = new GearSelector();
         private LoadoutArchetypes _loadoutArchetypes = new LoadoutArchetypes();
 
@@ -40,7 +40,7 @@ namespace DynamicLordGear
                 return;
             }
 
-            _gearSelector.SelectGearForHero(_gearCache, _loadoutArchetypes, hero, onSessionStart);
+            _gearSelector.SelectGearForHero(GearCache, _loadoutArchetypes, hero, onSessionStart);
         }
 
         internal void SelectGearForAllNPCHeroes(bool onSessionStart)
@@ -61,7 +61,7 @@ namespace DynamicLordGear
                 _harmony.PatchAll();
             }
 
-            _gearCache.Initialize();
+            GearCache.Initialize();
             _loadoutArchetypes.PopulateLoadouts();
 
             _sessionStarted = true;
@@ -104,7 +104,7 @@ namespace DynamicLordGear
             //In 1.3.13 the vanilla gear will likely be incorrect.
 
             //Do not check for player affiliation. Always apply the gear selection this time.
-            _gearSelector.SelectGearForHero(_gearCache, _loadoutArchetypes, hero);
+            _gearSelector.SelectGearForHero(GearCache, _loadoutArchetypes, hero);
         }
 
         public override void RegisterEvents()

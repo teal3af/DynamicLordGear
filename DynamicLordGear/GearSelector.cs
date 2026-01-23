@@ -34,21 +34,129 @@ namespace DynamicLordGear
             COUNT
         }
 
-        internal class GearRandomNumbers
+        internal class GearSelectionParams
         {
             private int[] _values = new int[(int)GearRandomNumber.COUNT];
 
-            internal GearRandomNumbers(uint seed1, uint seed2)
+            public readonly Dictionary<string, float> CultureEquipmentDiscounts = new Dictionary<string, float>();
+            public int TargetGearTier { get; private set; } = 0;
+
+            public Hero SelectForHero { get; private set; }
+            public GearCache SelectFromCache { get; private set; }
+
+            internal GearSelectionParams(Hero hero, GearCache gearCache)
             {
-                MBFastRandom random = new MBFastRandom(seed1 + seed2);
+                SelectForHero = hero;
+                SelectFromCache = gearCache;
+
+                MBFastRandom random = new MBFastRandom(hero.Id.InternalValue + (uint)DynamicLordGearSettings.Instance.RandomSeed);
 
                 for(int i = 0; i < (int)GearRandomNumber.COUNT; ++i)
                 {
                     _values[i] = random.Next();
                 }
+
+                CalculateTargetGearTier(hero);
+
+                if (hero.Culture != null)
+                {
+                    AddCultureDiscount(hero.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight);
+                }
+
+                if (hero.Clan != null && hero.Clan.Culture != null)
+                {
+                    AddCultureDiscount(hero.Clan.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight);
+                }
+
+                if (hero.Father != null && hero.Father.Culture != null)
+                {
+                    AddCultureDiscount(hero.Father.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight);
+                }
+
+                if (hero.Mother != null && hero.Mother.Culture != null)
+                {
+                    AddCultureDiscount(hero.Mother.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight);
+                }
             }
 
-            internal int Get(GearRandomNumber id, int exclusiveMax)
+            private void AddCultureDiscount(string cultureId, float discount)
+            {
+                if(discount <= 0)
+                {
+                    return;
+                }
+
+                if (CultureEquipmentDiscounts.ContainsKey(cultureId))
+                {
+                    CultureEquipmentDiscounts[cultureId] = Math.Max(CultureEquipmentDiscounts[cultureId], discount);
+                }
+                else
+                {
+                    CultureEquipmentDiscounts[cultureId] = discount;
+                }
+            }
+
+            private void CalculateTargetGearTier(Hero hero)
+            {
+                float gearTier = 0.0f;
+                float totalGearTierWieght = 0.0f;
+
+                if (DynamicLordGearSettings.Instance.GearTier_ClanTierWeight > 0.0f)
+                {
+                    int clanTier = 1;
+
+                    if (hero.Clan != null)
+                    {
+                        clanTier = hero.Clan.Tier;
+                    }
+                    else if (hero.IsWanderer)
+                    {
+                        if (DynamicLordGearSettings.Instance.MatchWandererGearTierToPlayer)
+                        {
+                            clanTier = Hero.MainHero.Clan.Tier;
+                        }
+                        else
+                        {
+                            clanTier = DynamicLordGearSettings.Instance.WandererClanTier;
+                        }
+                    }
+
+                    gearTier += clanTier * DynamicLordGearSettings.Instance.GearTier_ClanTierWeight;
+                    totalGearTierWieght += DynamicLordGearSettings.Instance.GearTier_ClanTierWeight;
+                }
+
+                if (DynamicLordGearSettings.Instance.GearTier_HeroSkillWeight > 0.0f)
+                {
+                    int skillTier = 1;
+
+                    int[] combatSkillValues = new int[]
+                        {
+                    hero.GetSkillValue(DefaultSkills.OneHanded),
+                    hero.GetSkillValue(DefaultSkills.TwoHanded),
+                    hero.GetSkillValue(DefaultSkills.Polearm),
+                    hero.GetSkillValue(DefaultSkills.Bow),
+                    hero.GetSkillValue(DefaultSkills.Crossbow),
+                    hero.GetSkillValue(DefaultSkills.Throwing)
+                        };
+
+                    int highestSkill = combatSkillValues.Max();
+
+                    skillTier = Math.Min(6, highestSkill / 40);
+
+                    gearTier += skillTier * DynamicLordGearSettings.Instance.GearTier_HeroSkillWeight;
+                    totalGearTierWieght += DynamicLordGearSettings.Instance.GearTier_HeroSkillWeight;
+                }
+
+                if (totalGearTierWieght > 0.0f)
+                {
+                    gearTier = gearTier / totalGearTierWieght;
+                }
+
+                //Clan tier is 1 - 6 but gear tier is 0 - 5 when it's an int
+                TargetGearTier = Math.Max(DynamicLordGearSettings.Instance.GearTier_Minimum, (int)gearTier) - 1;
+            }
+
+            internal int GetRandom(GearRandomNumber id, int exclusiveMax)
             {
                 if(exclusiveMax <= 0)
                 {
@@ -58,141 +166,66 @@ namespace DynamicLordGear
                 return _values[(int)id] % exclusiveMax;
             }
 
-            internal int Get(GearRandomNumber id, int inclusiveMin, int exclusiveMax)
+            internal int GetRandom(GearRandomNumber id, int inclusiveMin, int exclusiveMax)
             {
                 if (exclusiveMax <= inclusiveMin)
                 {
                     return inclusiveMin;
                 }
 
-                return inclusiveMin + Get(id, exclusiveMax - inclusiveMin);
+                return inclusiveMin + GetRandom(id, exclusiveMax - inclusiveMin);
             }
         }
 
-
-        internal int CalculateTargetGearTier(Hero hero)
+        private static void AccumulateCultureGearFavor(GearSelectionParams gearSelectionParams, string cultureId, float weight, List<GearFavor> cultureGearFavors, List<float> cultureWeights)
         {
-            float gearTier = 0.0f;
-            float totalGearTierWieght = 0.0f;
-
-            if (DynamicLordGearSettings.Instance.GearTier_ClanTierWeight > 0.0f)
+            if (weight > 0.0f)
             {
-                int clanTier = 1;
-
-                if (hero.Clan != null)
+                GearFavor? cultureFavor = null;
+                if (gearSelectionParams.SelectFromCache.CultureFavourFromGear.TryGetValue(cultureId, out cultureFavor))
                 {
-                    clanTier = hero.Clan.Tier;
+                    cultureGearFavors.Add(cultureFavor);
+                    cultureWeights.Add(weight * DynamicLordGearSettings.Instance.CultureAffinity_GearCatalogWeight);
                 }
-                else if(hero.IsWanderer)
+                if (gearSelectionParams.SelectFromCache.CultureFavourFromLoadouts.TryGetValue(cultureId, out cultureFavor))
                 {
-                    if(DynamicLordGearSettings.Instance.MatchWandererGearTierToPlayer)
-                    {
-                        clanTier = Hero.MainHero.Clan.Tier;
-                    }
-                    else
-                    {
-                        clanTier = DynamicLordGearSettings.Instance.WandererClanTier;
-                    }
+                    cultureGearFavors.Add(cultureFavor);
+                    cultureWeights.Add(weight * DynamicLordGearSettings.Instance.CultureAffinity_LordLoadoutWeight);
                 }
-
-                gearTier += clanTier * DynamicLordGearSettings.Instance.GearTier_ClanTierWeight;
-                totalGearTierWieght += DynamicLordGearSettings.Instance.GearTier_ClanTierWeight;
             }
-
-            if (DynamicLordGearSettings.Instance.GearTier_HeroSkillWeight > 0.0f)
-            {
-                int skillTier = 1;
-
-                int[] combatSkillValues = new int[]
-                    {
-                    hero.GetSkillValue(DefaultSkills.OneHanded),
-                    hero.GetSkillValue(DefaultSkills.TwoHanded),
-                    hero.GetSkillValue(DefaultSkills.Polearm),
-                    hero.GetSkillValue(DefaultSkills.Bow),
-                    hero.GetSkillValue(DefaultSkills.Crossbow),
-                    hero.GetSkillValue(DefaultSkills.Throwing)
-                    };
-
-                int highestSkill = combatSkillValues.Max();
-
-                skillTier = Math.Min(6, highestSkill / 40);
-
-                gearTier += skillTier * DynamicLordGearSettings.Instance.GearTier_HeroSkillWeight;
-                totalGearTierWieght += DynamicLordGearSettings.Instance.GearTier_HeroSkillWeight;
-            }
-
-            if(totalGearTierWieght > 0.0f)
-            {
-                gearTier = gearTier / totalGearTierWieght;
-            }
-
-            //Clan tier is 1 - 6 but gear tier is 0 - 5 when it's an int
-            return Math.Max(DynamicLordGearSettings.Instance.GearTier_Minimum, (int)gearTier) - 1;
         }
 
-        private GearFavor? GetCultureGearFavorForHero(GearCache gearCache, Hero hero)
+        public static GearFavor? GetCultureGearFavorForHero(GearSelectionParams gearSelectionParams)
         {
             List<GearFavor> cultureGearFavors = new List<GearFavor>();
             List<float> cultureWeights = new List<float>();
 
-            if (DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight > 0.0f && hero.Culture != null)
+            if(gearSelectionParams.SelectForHero.Culture != null)
             {
-                GearFavor? cultureFavor = null;
-                if (gearCache.CultureFavourFromGear.TryGetValue(hero.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_GearCatalogWeight);
-                }
-                if (gearCache.CultureFavourFromLoadouts.TryGetValue(hero.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_LordLoadoutWeight);
-                }
+                AccumulateCultureGearFavor(gearSelectionParams, 
+                    gearSelectionParams.SelectForHero.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight, 
+                    cultureGearFavors, cultureWeights);
             }
 
-            if (DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight > 0.0f && hero.Clan != null && hero.Clan.Culture != null)
+            if (gearSelectionParams.SelectForHero.Clan != null && gearSelectionParams.SelectForHero.Clan.Culture != null)
             {
-                GearFavor? cultureFavor = null;
-                if (gearCache.CultureFavourFromGear.TryGetValue(hero.Clan.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_GearCatalogWeight);
-                }
-                if (gearCache.CultureFavourFromLoadouts.TryGetValue(hero.Clan.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_LordLoadoutWeight);
-                }
+                AccumulateCultureGearFavor(gearSelectionParams,
+                    gearSelectionParams.SelectForHero.Clan.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight,
+                    cultureGearFavors, cultureWeights);
             }
 
-            if (DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight > 0.0f && hero.Father != null && hero.Father.Culture != null)
+            if (gearSelectionParams.SelectForHero.Father != null && gearSelectionParams.SelectForHero.Father.Culture != null)
             {
-                GearFavor? cultureFavor = null;
-                if (gearCache.CultureFavourFromGear.TryGetValue(hero.Father.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_GearCatalogWeight);
-                }
-                if (gearCache.CultureFavourFromLoadouts.TryGetValue(hero.Father.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_LordLoadoutWeight);
-                }
+                AccumulateCultureGearFavor(gearSelectionParams,
+                    gearSelectionParams.SelectForHero.Father.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight,
+                    cultureGearFavors, cultureWeights);
             }
 
-            if (DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight > 0.0f && hero.Mother != null && hero.Mother.Culture != null)
+            if (gearSelectionParams.SelectForHero.Mother != null && gearSelectionParams.SelectForHero.Mother.Culture != null)
             {
-                GearFavor? cultureFavor = null;
-                if (gearCache.CultureFavourFromGear.TryGetValue(hero.Mother.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_GearCatalogWeight);
-                }
-                if (gearCache.CultureFavourFromLoadouts.TryGetValue(hero.Mother.Culture.StringId, out cultureFavor))
-                {
-                    cultureGearFavors.Add(cultureFavor);
-                    cultureWeights.Add(DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight * DynamicLordGearSettings.Instance.CultureAffinity_LordLoadoutWeight);
-                }
+                AccumulateCultureGearFavor(gearSelectionParams,
+                    gearSelectionParams.SelectForHero.Mother.Culture.StringId, DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight,
+                    cultureGearFavors, cultureWeights);
             }
 
             if (cultureGearFavors.Count == 0)
@@ -217,127 +250,84 @@ namespace DynamicLordGear
             return mergedCulturalFavor.Mul(1.0f / totalWeight);
         }
 
-        internal ItemObject? GetAppropriateGear(GearRandomNumbers rng, GearRandomNumber rngId, GearCache gearCache, Hero hero, int targetGearTier, GearCategory gearCategory)
+        internal ItemObject? GetAppropriateGear(GearSelectionParams gearSelectionParams, GearRandomNumber rngId, GearCategory primaryCategory, GearCategory secondaryCategory = GearCategory.Null)
         {
-            //TODO - Could precaulate this instead of doing it in the call
-            //could batch hero, gear tier, rng into one structure - gear selector params
-
-            Dictionary<string, float> cultureEquipmentDiscounts = new Dictionary<string, float>();
-
-            if (DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight > 0.0f && hero.Culture != null)
-            {
-                if(cultureEquipmentDiscounts.ContainsKey(hero.Culture.StringId))
-                {
-                    cultureEquipmentDiscounts[hero.Culture.StringId] = Math.Max(cultureEquipmentDiscounts[hero.Culture.StringId], DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight);
-                }
-                else
-                {
-                    cultureEquipmentDiscounts[hero.Culture.StringId] = DynamicLordGearSettings.Instance.HeroAffinity_PersonalCultureWeight;
-                }
-            }
-
-            if (DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight > 0.0f && hero.Clan != null && hero.Clan.Culture != null)
-            {
-                if (cultureEquipmentDiscounts.ContainsKey(hero.Clan.Culture.StringId))
-                {
-                    cultureEquipmentDiscounts[hero.Clan.Culture.StringId] = Math.Max(cultureEquipmentDiscounts[hero.Clan.Culture.StringId], DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight);
-                }
-                else
-                {
-                    cultureEquipmentDiscounts[hero.Clan.Culture.StringId] = DynamicLordGearSettings.Instance.HeroAffinity_ClanCultureWeight;
-                }
-            }
-
-            if (DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight > 0.0f && hero.Father != null && hero.Father.Culture != null)
-            {
-                if (cultureEquipmentDiscounts.ContainsKey(hero.Father.Culture.StringId))
-                {
-                    cultureEquipmentDiscounts[hero.Father.Culture.StringId] = Math.Max(cultureEquipmentDiscounts[hero.Father.Culture.StringId], DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight);
-                }
-                else
-                {
-                    cultureEquipmentDiscounts[hero.Father.Culture.StringId] = DynamicLordGearSettings.Instance.HeroAffinity_FatherCultureWeight;
-                }
-            }
-
-            if (DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight > 0.0f && hero.Mother != null && hero.Mother.Culture != null)
-            {
-                if (cultureEquipmentDiscounts.ContainsKey(hero.Mother.Culture.StringId))
-                {
-                    cultureEquipmentDiscounts[hero.Mother.Culture.StringId] = Math.Max(cultureEquipmentDiscounts[hero.Mother.Culture.StringId], DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight);
-                }
-                else
-                {
-                    cultureEquipmentDiscounts[hero.Mother.Culture.StringId] = DynamicLordGearSettings.Instance.HeroAffinity_MotherCultureWeight;
-                }
-            }
-
             List<ItemObject> itemMatches = new List<ItemObject>();
             float lowestCost = float.MaxValue;
 
-            foreach (var cultureGear in gearCache.CultureGear)
+            for(int i = 0; i < 2; ++i)
             {
-                string cultureId = cultureGear.Key;
-                CultureGearList gearList = cultureGear.Value;
+                GearCategory gearCategory = i == 0 ? primaryCategory : secondaryCategory;
 
-                //Culture contains no gear of this type
-                if (!gearList.GearCategories.ContainsKey(gearCategory))
+                if(gearCategory == GearCategory.Null)
                 {
                     continue;
                 }
 
-                float cultureCost = DynamicLordGearSettings.Instance.GearChoice_CultureStrictness;
-
-                float discount = 0.0f;
-                if (cultureEquipmentDiscounts.TryGetValue(cultureId, out discount))
+                foreach (var cultureGear in gearSelectionParams.SelectFromCache.CultureGear)
                 {
-                    cultureCost *= 1.0f - discount;
-                }
+                    string cultureId = cultureGear.Key;
+                    CultureGearList gearList = cultureGear.Value;
 
-                GearCategoryDetails gearCategoryList = gearList.GearCategories[gearCategory];
-
-                foreach (ItemObject item in gearCategoryList.GearList)
-                {
-                    int itemTier = (int)item.Tier;
-
-                    float tierDistance = itemTier - targetGearTier;
-
-                    float totalCost = cultureCost + Math.Abs((tierDistance > 0 ? tierDistance * 1.5f : tierDistance)); ;
-
-                    if(totalCost <= lowestCost)
+                    //Culture contains no gear of this type
+                    if (!gearList.GearCategories.ContainsKey(gearCategory))
                     {
-                        if (totalCost < lowestCost)
+                        continue;
+                    }
+
+                    float cultureCost = DynamicLordGearSettings.Instance.GearChoice_CultureStrictness;
+
+                    float discount = 0.0f;
+                    if (gearSelectionParams.CultureEquipmentDiscounts.TryGetValue(cultureId, out discount))
+                    {
+                        cultureCost *= 1.0f - discount;
+                    }
+
+                    GearCategoryDetails gearCategoryList = gearList.GearCategories[gearCategory];
+
+                    foreach (ItemObject item in gearCategoryList.GearList)
+                    {
+                        int itemTier = (int)item.Tier;
+
+                        float tierDistance = itemTier - gearSelectionParams.TargetGearTier;
+
+                        float totalCost = cultureCost + Math.Abs((tierDistance > 0 ? tierDistance * 1.5f : tierDistance)); ;
+
+                        if (totalCost <= lowestCost)
                         {
-                            lowestCost = totalCost;
-                            itemMatches.Clear();
+                            if (totalCost < lowestCost)
+                            {
+                                lowestCost = totalCost;
+                                itemMatches.Clear();
+                            }
+
+                            itemMatches.Add(item);
                         }
 
-                        itemMatches.Add(item);
                     }
-                    
                 }
             }
 
             if (itemMatches.Count > 0)
             {
-                return itemMatches[rng.Get(rngId, itemMatches.Count)];
+                return itemMatches[gearSelectionParams.GetRandom(rngId, itemMatches.Count)];
             }
 
             return null;
         }
 
-        internal void AddModifiedEquipmentToHero(Hero hero, EquipmentIndex targetSlot, ItemObject item, int targetGearTier)
+        internal void AddModifiedEquipmentToHero(GearSelectionParams gearSelectionParams, EquipmentIndex targetSlot, ItemObject item)
         {
             ItemModifier? modifier = null;
 
             if(DynamicLordGearSettings.Instance.GearChoice_ApplyItemModifiers)
             {
-                if (targetGearTier != (int)item.Tier && item.ItemComponent != null && item.ItemComponent.ItemModifierGroup != null)
+                if (gearSelectionParams.TargetGearTier != (int)item.Tier && item.ItemComponent != null && item.ItemComponent.ItemModifierGroup != null)
                 {
                     List<ItemModifier> sortedItemModifiers = new List<ItemModifier>();
 
                     //If we went up in tier, go down in quality.
-                    if ((int)item.Tier > targetGearTier)
+                    if ((int)item.Tier > gearSelectionParams.TargetGearTier)
                     {
                         //Negative modifiers, from least bad to most bad
                         sortedItemModifiers.AddRange(item.ItemComponent.ItemModifierGroup.ItemModifiers.Where(mod => mod.PriceMultiplier < 1.0f).OrderByDescending(mod => mod.PriceMultiplier).ToList());
@@ -348,45 +338,45 @@ namespace DynamicLordGear
                         sortedItemModifiers.AddRange(item.ItemComponent.ItemModifierGroup.ItemModifiers.Where(mod => mod.PriceMultiplier > 1.0f).OrderBy(mod => mod.PriceMultiplier).ToList());
                     }
 
-                    int modifierIndex = Math.Min(sortedItemModifiers.Count - 1, Math.Abs(targetGearTier - (int)item.Tier) - 1);
+                    int modifierIndex = Math.Min(sortedItemModifiers.Count - 1, Math.Abs(gearSelectionParams.TargetGearTier - (int)item.Tier) - 1);
                     modifier = sortedItemModifiers[modifierIndex];
                 }
             }
 
-            hero.BattleEquipment[targetSlot] = new EquipmentElement(item, modifier);
+            gearSelectionParams.SelectForHero.BattleEquipment[targetSlot] = new EquipmentElement(item, modifier);
         }
 
-        internal void SelectDynamicArmorForHero(GearRandomNumbers rng, GearCache gearCache, Hero hero, int targetGearTier)
+        internal void SelectDynamicArmorForHero(GearSelectionParams gearSelectionParams)
         {
-            ItemObject? bodyOrChestArmor = GetAppropriateGear(rng, GearRandomNumber.BodyArmor, gearCache, hero, targetGearTier, GearCategory.ChestOrBodyArmor);
-            ItemObject? handArmor = GetAppropriateGear(rng, GearRandomNumber.HandArmor, gearCache, hero, targetGearTier, GearCategory.HandArmor);
-            ItemObject? legArmor = GetAppropriateGear(rng, GearRandomNumber.LegArmor, gearCache, hero, targetGearTier, GearCategory.LegArmor);
-            ItemObject? headArmor = GetAppropriateGear(rng, GearRandomNumber.HeadArmor, gearCache, hero, targetGearTier, GearCategory.HeadArmor);
-            ItemObject? neckArmor = GetAppropriateGear(rng, GearRandomNumber.NeckArmor, gearCache, hero, targetGearTier, GearCategory.NeckArmor);
+            ItemObject? bodyOrChestArmor = GetAppropriateGear(gearSelectionParams, GearRandomNumber.BodyArmor, GearCategory.ChestOrBodyArmor);
+            ItemObject? handArmor = GetAppropriateGear(gearSelectionParams, GearRandomNumber.HandArmor, GearCategory.HandArmor);
+            ItemObject? legArmor = GetAppropriateGear(gearSelectionParams, GearRandomNumber.LegArmor, GearCategory.LegArmor);
+            ItemObject? headArmor = GetAppropriateGear(gearSelectionParams, GearRandomNumber.HeadArmor, GearCategory.HeadArmor);
+            ItemObject? neckArmor = GetAppropriateGear(gearSelectionParams, GearRandomNumber.NeckArmor, GearCategory.NeckArmor);
 
             if (bodyOrChestArmor != null)
             {
-                AddModifiedEquipmentToHero(hero, EquipmentIndex.Body, bodyOrChestArmor, targetGearTier);
+                AddModifiedEquipmentToHero(gearSelectionParams, EquipmentIndex.Body, bodyOrChestArmor);
             }
 
             if (handArmor != null)
             {
-                AddModifiedEquipmentToHero(hero, EquipmentIndex.Gloves, handArmor, targetGearTier);
+                AddModifiedEquipmentToHero(gearSelectionParams, EquipmentIndex.Gloves, handArmor);
             }
 
             if (legArmor != null)
             {
-                AddModifiedEquipmentToHero(hero, EquipmentIndex.Leg, legArmor, targetGearTier);
+                AddModifiedEquipmentToHero(gearSelectionParams, EquipmentIndex.Leg, legArmor);
             }
 
             if (headArmor != null)
             {
-                AddModifiedEquipmentToHero(hero, EquipmentIndex.Head, headArmor, targetGearTier);
+                AddModifiedEquipmentToHero(gearSelectionParams, EquipmentIndex.Head, headArmor);
             }
 
             if (neckArmor != null)
             {
-                AddModifiedEquipmentToHero(hero, EquipmentIndex.Cape, neckArmor, targetGearTier);
+                AddModifiedEquipmentToHero(gearSelectionParams, EquipmentIndex.Cape, neckArmor);
             }
         }
 
@@ -417,14 +407,14 @@ namespace DynamicLordGear
             }
         }
 
-        internal void SelectDynamicWeaponsForHero(GearRandomNumbers rng, GearCache gearCache, LoadoutArchetypes loadoutArchetpyes, Hero hero,  int targetGearTier)
+        internal void SelectDynamicWeaponsForHero(GearSelectionParams gearSelectionParams, LoadoutArchetypes loadoutArchetpyes)
         {
             //Default to all 1 ie everything has the same mul
             GearFavor gearFavour = new GearFavor(1.0f);
 
             if (DynamicLordGearSettings.Instance.HeroAffinity_CultureWeight > 0.0f)
             {
-                GearFavor? cultureGearFavour = GetCultureGearFavorForHero(gearCache, hero);
+                GearFavor? cultureGearFavour = GetCultureGearFavorForHero(gearSelectionParams);
                 if(cultureGearFavour != null)
                 {
                     gearFavour = new GearFavor(1.0f - DynamicLordGearSettings.Instance.HeroAffinity_CultureWeight).Add(cultureGearFavour.Mul(DynamicLordGearSettings.Instance.HeroAffinity_CultureWeight));
@@ -435,7 +425,7 @@ namespace DynamicLordGear
 
             if(DynamicLordGearSettings.Instance.HeroAffinity_SkillWeight > 0.0f)
             {
-                heroAffinities.SetFromHero(hero, DynamicLordGearSettings.Instance.HeroAffinity_SkillWeight);
+                heroAffinities.SetFromHero(gearSelectionParams.SelectForHero, DynamicLordGearSettings.Instance.HeroAffinity_SkillWeight);
             }
 
             bool preferCrossbow = false;
@@ -452,21 +442,30 @@ namespace DynamicLordGear
                 switch (chosenArchetype.Loadout[i])
                 {
                     case LoadoutWeaponArchetype.OneHanded:
-                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.OneHanded);
-                        break;
+                        {
+                            //If we have a shield, AI will use a 1h/2h as a 1h.
+                            GearCategory secondaryCategory = chosenArchetype.HasShield ? GearCategory.OneOrTwoHanded : GearCategory.Null;
+                            appropriateItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, GearCategory.OneHanded, secondaryCategory);
+                            break;
+                        }
+                        
                     case LoadoutWeaponArchetype.TwoHanded:
-                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.TwoHanded);
-                        break;
+                        {
+                            //If we don't have a shield, AI will use a 1h/2h as a 2h.
+                            GearCategory secondaryCategory = chosenArchetype.HasShield ? GearCategory.Null : GearCategory.OneOrTwoHanded;
+                            appropriateItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, GearCategory.TwoHanded, secondaryCategory);
+                            break;
+                        }
                     case LoadoutWeaponArchetype.PolearmThrust:
-                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.PolearmLance : GearCategory.PolearmSpear);
+                        appropriateItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, chosenArchetype.Mounted ? GearCategory.PolearmLance : GearCategory.PolearmSpear);
                         break;
                     case LoadoutWeaponArchetype.PolearmSwing:
-                        appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.PolearmSwing);
+                        appropriateItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, GearCategory.PolearmSwing);
                         break;
                     case LoadoutWeaponArchetype.Throwing:
                         if (throwingItem == null)
                         {
-                            throwingItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.Throwing);
+                            throwingItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, GearCategory.Throwing);
                         }
 
                         if (throwingItem != null)
@@ -477,11 +476,11 @@ namespace DynamicLordGear
                     case LoadoutWeaponArchetype.Ranged:
                         if (preferCrossbow)
                         {
-                            appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseCrossbow : GearCategory.Crossbow);
+                            appropriateItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, chosenArchetype.Mounted ? GearCategory.HorseCrossbow : GearCategory.Crossbow);
                         }
                         else
                         {
-                            appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseBow : GearCategory.Bow);
+                            appropriateItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, chosenArchetype.Mounted ? GearCategory.HorseBow : GearCategory.Bow);
                         }
                         break;
                     case LoadoutWeaponArchetype.Ammo:
@@ -489,11 +488,11 @@ namespace DynamicLordGear
                         {
                             if (preferCrossbow)
                             {
-                                ammoItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.Bolts);
+                                ammoItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, GearCategory.Bolts);
                             }
                             else
                             {
-                                ammoItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, GearCategory.Arrows);
+                                ammoItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, GearCategory.Arrows);
                             }
                         }
 
@@ -504,7 +503,7 @@ namespace DynamicLordGear
                         break;
                     case LoadoutWeaponArchetype.Shield:
                         {
-                            appropriateItem = GetAppropriateGear(rng, GearRandomNumber.Weapon0 + i, gearCache, hero, targetGearTier, chosenArchetype.Mounted ? GearCategory.HorseShield : GearCategory.Shield);
+                            appropriateItem = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Weapon0 + i, chosenArchetype.Mounted ? GearCategory.HorseShield : GearCategory.Shield);
                         }
                         break;
                     case LoadoutWeaponArchetype.Empty:
@@ -514,7 +513,8 @@ namespace DynamicLordGear
 
                 if (chosenArchetype.Loadout[i] != LoadoutWeaponArchetype.Empty && appropriateItem == null)
                 {
-                    MBDebug.ShowWarning($"Couldn't find appropriate {chosenArchetype.Loadout[i].ToString()} for {hero.Name.Value} when calculating loadout.");
+                    //TODO - show this via info manager
+                    MBDebug.ShowWarning($"Couldn't find appropriate {chosenArchetype.Loadout[i].ToString()} for {gearSelectionParams.SelectForHero.Name.Value} when calculating loadout.");
                 }
 
                 if (appropriateItem != null)
@@ -529,50 +529,50 @@ namespace DynamicLordGear
                 EquipmentIndex index = i + EquipmentIndex.WeaponItemBeginSlot;
                 if (i < weaponItemList.Count)
                 {
-                    AddModifiedEquipmentToHero(hero, index, weaponItemList[i], targetGearTier);
+                    AddModifiedEquipmentToHero(gearSelectionParams, index, weaponItemList[i]);
                 }
                 else
                 {
-                    hero.BattleEquipment[index] = EquipmentElement.Invalid;
+                    gearSelectionParams.SelectForHero.BattleEquipment[index] = EquipmentElement.Invalid;
                 }
             }
 
             if (chosenArchetype.Mounted)
             {
-                ItemObject? horse = GetAppropriateGear(rng, GearRandomNumber.Horse, gearCache, hero, targetGearTier, GearCategory.Horse);
-                ItemObject? saddle = GetAppropriateGear(rng, GearRandomNumber.Saddle, gearCache, hero, targetGearTier, GearCategory.Saddle);
+                ItemObject? horse = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Horse, GearCategory.Horse);
+                ItemObject? saddle = GetAppropriateGear(gearSelectionParams, GearRandomNumber.Saddle, GearCategory.Saddle);
 
-                hero.BattleEquipment[EquipmentIndex.Horse] = new EquipmentElement(horse);
-                hero.BattleEquipment[EquipmentIndex.HorseHarness] = new EquipmentElement(saddle);
+                gearSelectionParams.SelectForHero.BattleEquipment[EquipmentIndex.Horse] = new EquipmentElement(horse);
+                gearSelectionParams.SelectForHero.BattleEquipment[EquipmentIndex.HorseHarness] = new EquipmentElement(saddle);
             }
             else
             {
-                hero.BattleEquipment[EquipmentIndex.Horse] = EquipmentElement.Invalid;
-                hero.BattleEquipment[EquipmentIndex.HorseHarness] = EquipmentElement.Invalid;
+                gearSelectionParams.SelectForHero.BattleEquipment[EquipmentIndex.Horse] = EquipmentElement.Invalid;
+                gearSelectionParams.SelectForHero.BattleEquipment[EquipmentIndex.HorseHarness] = EquipmentElement.Invalid;
             }
         }
 
         //This is similar to GetEquipmentRostersForHeroComeOfAge() - but flattened out and it won't return non-combtant templates even for women
-        private List<Equipment> GetStandardEquipmentSetsForLord(GearCache gearCache, Hero hero, bool getCivilianEquipment)
+        private List<Equipment> GetStandardEquipmentSetsForLord(GearSelectionParams gearSelectionParams, bool getCivilianEquipment)
         {
             List<List<Equipment>> listsToTry = new List<List<Equipment>>();
 
-            if (hero.Culture != null)
+            if (gearSelectionParams.SelectForHero.Culture != null)
             {
                 GearCache.CultureLoadoutList? cultureEquipmentRoster = null;
-                if (gearCache.CultureStandardLoadouts.TryGetValue(hero.Culture.StringId, out cultureEquipmentRoster))
+                if (gearSelectionParams.SelectFromCache.CultureStandardLoadouts.TryGetValue(gearSelectionParams.SelectForHero.Culture.StringId, out cultureEquipmentRoster))
                 {
                     //Woman can fall back to male outfits but not the other way around
-                    if (hero.IsFemale)
+                    if (gearSelectionParams.SelectForHero.IsFemale)
                     {
-                        if (hero.IsKingdomLeader)
+                        if (gearSelectionParams.SelectForHero.IsKingdomLeader)
                         {
                             listsToTry.Add(getCivilianEquipment ? cultureEquipmentRoster.FemaleLeaderCivilian : cultureEquipmentRoster.FemaleLeaderBattle);
                         }
 
                         if(getCivilianEquipment)
                         {
-                            if(hero.IsNoncombatant)
+                            if(gearSelectionParams.SelectForHero.IsNoncombatant)
                             {
                                 listsToTry.Add(cultureEquipmentRoster.FemaleNobleNonCombatant);
                                 listsToTry.Add(cultureEquipmentRoster.FemaleNobleCivilian);
@@ -589,14 +589,14 @@ namespace DynamicLordGear
                         }
                     }
 
-                    if (hero.IsKingdomLeader)
+                    if (gearSelectionParams.SelectForHero.IsKingdomLeader)
                     {
                         listsToTry.Add(getCivilianEquipment ? cultureEquipmentRoster.MaleLeaderCivilian : cultureEquipmentRoster.MaleLeaderBattle);
                     }
 
                     if (getCivilianEquipment)
                     {
-                        if (hero.IsNoncombatant)
+                        if (gearSelectionParams.SelectForHero.IsNoncombatant)
                         {
                             listsToTry.Add(cultureEquipmentRoster.MaleNobleNonCombatant);
                             listsToTry.Add(cultureEquipmentRoster.MaleNobleCivilian);
@@ -638,15 +638,15 @@ namespace DynamicLordGear
             return returnList;
         }
 
-        private void SelectCivilianGearForWanderer(GearRandomNumbers rng, Hero hero)
+        private void SelectCivilianGearForWanderer(GearSelectionParams gearSelectionParams)
         {
             //Give wanderers really crappy civilian gear
             //This is the vanilla behavior - but it's also desierable because it keeps their hiring cost down
             List<Equipment> civilianEquipments = new List<Equipment>();
 
-            if (hero.Template != null)
+            if (gearSelectionParams.SelectForHero.Template != null)
             {
-                civilianEquipments.AddRange(hero.Template.CivilianEquipments);
+                civilianEquipments.AddRange(gearSelectionParams.SelectForHero.Template.CivilianEquipments);
             }
 
             if (civilianEquipments.Count == 0)
@@ -661,34 +661,33 @@ namespace DynamicLordGear
 
             if (civilianEquipments.Count > 0)
             {
-                Equipment randomCivilianEquipmentSet = civilianEquipments[rng.Get(GearRandomNumber.CivilianSet, civilianEquipments.Count)];
+                Equipment randomCivilianEquipmentSet = civilianEquipments[gearSelectionParams.GetRandom(GearRandomNumber.CivilianSet, civilianEquipments.Count)];
 
                 for (int i = 0; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
                 {
-                    hero.CivilianEquipment[i] = new EquipmentElement(randomCivilianEquipmentSet[i].Item);
+                    gearSelectionParams.SelectForHero.CivilianEquipment[i] = new EquipmentElement(randomCivilianEquipmentSet[i].Item);
                 }
 
-                DowngradeCompanionGear(hero.CivilianEquipment);
+                DowngradeCompanionGear(gearSelectionParams.SelectForHero.CivilianEquipment);
             }
 
             if (DynamicLordGearSettings.Instance.GiveWanderersWornOutGear)
             {
-                DowngradeCompanionGear(hero.BattleEquipment);
+                DowngradeCompanionGear(gearSelectionParams.SelectForHero.BattleEquipment);
             }
         }
 
-        private void SelectStandardBattleEquipmentForHero(GearRandomNumbers rng, GearCache gearCache, Hero hero)
+        private void SelectStandardBattleEquipmentForHero(GearSelectionParams gearSelectionParams)
         {
-            Equipment? chosenEquipment = null;
+            List<Equipment> candidateBattleEquipments = new List<Equipment>();
 
             //For characters that existed at the start of the game, this will revert them to what was written in the xml
             //Unless what was written in the xml resulted in them having no combat, in which case we still give them some other loadout
             //Kingdom leaders should go through the standard sets. If they are the OG kingdom leader, then they will just get their stuff back anyway.
             //If they are a new kingdom leader, then they should get the king outfit.
-            if (!hero.IsKingdomLeader && hero.CharacterObject != null && hero.CharacterObject.IsOriginalCharacter)
+            if (!gearSelectionParams.SelectForHero.IsKingdomLeader && gearSelectionParams.SelectForHero.CharacterObject != null && gearSelectionParams.SelectForHero.CharacterObject.IsOriginalCharacter)
             {
-                MBReadOnlyList<Equipment>? originalEquipment = Hacks.GetOriginalEquipmentRoster(hero.CharacterObject);
-                List<Equipment> candidateBattleEquipments = new List<Equipment>();
+                MBReadOnlyList<Equipment>? originalEquipment = Hacks.GetOriginalEquipmentRoster(gearSelectionParams.SelectForHero.CharacterObject);
 
                 if(originalEquipment != null)
                 {
@@ -700,51 +699,54 @@ namespace DynamicLordGear
                         }
                     }
                 }
+            }
 
-                if(candidateBattleEquipments.Count > 0)
+            if (candidateBattleEquipments.Count == 0 && gearSelectionParams.SelectForHero.Template != null)
+            {
+                List<Equipment> templateBattleEquipments = gearSelectionParams.SelectForHero.Template.BattleEquipments.ToList();
+
+                foreach (Equipment battleEquipment in templateBattleEquipments)
                 {
-                    chosenEquipment = candidateBattleEquipments[rng.Get(GearRandomNumber.BattleSet,candidateBattleEquipments.Count)];
+                    if (GearCache.HasDecentWeapons(battleEquipment) && GearCache.HasDecentArmour(battleEquipment))
+                    {
+                        candidateBattleEquipments.Add(battleEquipment);
+                    }
                 }
             }
             
-            if(chosenEquipment == null)
+            if(candidateBattleEquipments.Count == 0)
             {
-                List<Equipment> battleEquipmentSetList = GetStandardEquipmentSetsForLord(gearCache, hero, getCivilianEquipment: false);
-
-                if (battleEquipmentSetList.Count > 0)
-                {
-                    chosenEquipment = battleEquipmentSetList[rng.Get(GearRandomNumber.BattleSet, battleEquipmentSetList.Count)];
-                }
+                candidateBattleEquipments.AddRange(GetStandardEquipmentSetsForLord(gearSelectionParams, getCivilianEquipment: false));
             }
 
-            if(chosenEquipment != null)
+            if (candidateBattleEquipments.Count > 0)
             {
+                Equipment chosenEquipment = candidateBattleEquipments[gearSelectionParams.GetRandom(GearRandomNumber.BattleSet, candidateBattleEquipments.Count)];
+
                 for (int i = 0; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
                 {
-                    hero.BattleEquipment[i] = new EquipmentElement(chosenEquipment[i].Item, chosenEquipment[i].ItemModifier);
+                    gearSelectionParams.SelectForHero.BattleEquipment[i] = new EquipmentElement(chosenEquipment[i].Item, chosenEquipment[i].ItemModifier);
                 }
             }
         }
 
-        private void SelectStandardCivilianEquipmentForHero(GearRandomNumbers rng, GearCache gearCache, Hero hero)
+        private void SelectStandardCivilianEquipmentForHero(GearSelectionParams gearSelectionParams)
         {
-            if(hero.IsWanderer)
+            if (gearSelectionParams.SelectForHero.IsWanderer)
             {
-                SelectCivilianGearForWanderer(rng, hero);
+                SelectCivilianGearForWanderer(gearSelectionParams);
             }
             else
             {
-                //For characters that existed at the start of the game, this will revert them to what was written in the xml
-                Equipment? chosenEquipment = null;
+                List<Equipment> candidateCivilianEquipments = new List<Equipment>();
 
                 //For characters that existed at the start of the game, this will revert them to what was written in the xml
                 //Unless what was written in the xml resulted in them having no combat, in which case we still give them some other loadout
                 //Kingdom leaders should go through the standard sets. If they are the OG kingdom leader, then they will just get their stuff back anyway.
                 //If they are a new kingdom leader, then they should get the king outfit.
-                if (!hero.IsKingdomLeader && hero.CharacterObject != null && hero.CharacterObject.IsOriginalCharacter)
+                if (!gearSelectionParams.SelectForHero.IsKingdomLeader && gearSelectionParams.SelectForHero.CharacterObject != null && gearSelectionParams.SelectForHero.CharacterObject.IsOriginalCharacter)
                 {
-                    MBReadOnlyList<Equipment>? originalEquipment = Hacks.GetOriginalEquipmentRoster(hero.CharacterObject);
-                    List<Equipment> candidateCivilianEquipments = new List<Equipment>();
+                    MBReadOnlyList<Equipment>? originalEquipment = Hacks.GetOriginalEquipmentRoster(gearSelectionParams.SelectForHero.CharacterObject);
 
                     if (originalEquipment != null)
                     {
@@ -753,28 +755,30 @@ namespace DynamicLordGear
                             candidateCivilianEquipments.Add(civilianEquipment);
                         }
                     }
+                }
 
-                    if (candidateCivilianEquipments.Count > 0)
+                if (candidateCivilianEquipments.Count == 0 && gearSelectionParams.SelectForHero.Template != null)
+                {
+                    List<Equipment> templateCivilianEquipments = gearSelectionParams.SelectForHero.Template.CivilianEquipments.ToList();
+
+                    foreach (Equipment civilianEquipment in templateCivilianEquipments)
                     {
-                        chosenEquipment = candidateCivilianEquipments[rng.Get(GearRandomNumber.CivilianSet, candidateCivilianEquipments.Count)];
+                        candidateCivilianEquipments.Add(civilianEquipment);
                     }
                 }
 
-                if (chosenEquipment == null)
+                if (candidateCivilianEquipments.Count == 0)
                 {
-                    List<Equipment> civilianEquipmentSetList = GetStandardEquipmentSetsForLord(gearCache, hero, getCivilianEquipment: true);
-
-                    if (civilianEquipmentSetList.Count > 0)
-                    {
-                        chosenEquipment = civilianEquipmentSetList[rng.Get(GearRandomNumber.CivilianSet, civilianEquipmentSetList.Count)];
-                    }
+                    candidateCivilianEquipments.AddRange(GetStandardEquipmentSetsForLord(gearSelectionParams, getCivilianEquipment: true));
                 }
 
-                if (chosenEquipment != null)
+                if (candidateCivilianEquipments.Count > 0)
                 {
+                    Equipment chosenEquipment = candidateCivilianEquipments[gearSelectionParams.GetRandom(GearRandomNumber.CivilianSet, candidateCivilianEquipments.Count)];
+
                     for (int i = 0; i < (int)EquipmentIndex.NumEquipmentSetSlots; ++i)
                     {
-                        hero.CivilianEquipment[i] = new EquipmentElement(chosenEquipment[i].Item, chosenEquipment[i].ItemModifier);
+                        gearSelectionParams.SelectForHero.CivilianEquipment[i] = new EquipmentElement(chosenEquipment[i].Item, chosenEquipment[i].ItemModifier);
                     }
                 }
             }
@@ -782,8 +786,6 @@ namespace DynamicLordGear
 
         internal void SelectGearForHero(GearCache gearCache, LoadoutArchetypes loadoutArchetypes, Hero hero, bool onSessionStart = false)
         {
-            GearRandomNumbers rng = new GearRandomNumbers(hero.Id.InternalValue, (uint)DynamicLordGearSettings.Instance.RandomSeed);
-
             bool undergeared = false;
 
             //If a wanderer called this function, they must have passed a different check. Skip undergeared checks as most of them technically *are*.
@@ -808,31 +810,38 @@ namespace DynamicLordGear
                 }
             }
 
-            if (DynamicLordGearSettings.Instance.DynamicGearSelection)
-            {
-                int targetGearTier = hero.IsKingdomLeader ? 8 : CalculateTargetGearTier(hero);
+            GearSelectionParams gearSelectionParams = new GearSelectionParams(hero, gearCache);
 
+            bool doDynamicGear = DynamicLordGearSettings.Instance.DynamicGearSelection;
+
+            if(DynamicLordGearSettings.Instance.ExcludeMinorFactions && hero.Clan != null && hero.Clan.IsMinorFaction)
+            {
+                doDynamicGear = false;
+            }
+
+            if (doDynamicGear)
+            {
                 //Leaders should still get their "king armor" even if dynamic gear is on.
                 if (hero.IsKingdomLeader || (hero.IsLord && DynamicLordGearSettings.Instance.UseStandardLordArmor))
                 {
-                    SelectStandardBattleEquipmentForHero(rng, gearCache, hero);
+                    SelectStandardBattleEquipmentForHero(gearSelectionParams);
                 }
                 else
                 {
-                    SelectDynamicArmorForHero(rng, gearCache, hero, targetGearTier);
+                    SelectDynamicArmorForHero(gearSelectionParams);
                 }
 
-                SelectDynamicWeaponsForHero(rng, gearCache, loadoutArchetypes, hero, targetGearTier);
+                SelectDynamicWeaponsForHero(gearSelectionParams, loadoutArchetypes);
             }
             else
             {
-                SelectStandardBattleEquipmentForHero(rng, gearCache, hero);
+                SelectStandardBattleEquipmentForHero(gearSelectionParams);
             }
 
             //For now, always apply civilian gear. For bugged lords it may be incorrect. Also, previous versions of this mod occasionally
             //  would give lords slightly wrong civvie gear.
             //This func will restore the hand-picked civilian gear for original characters and pick random stuff for 2nd+ generation.
-            SelectStandardCivilianEquipmentForHero(rng, gearCache, hero);
+            SelectStandardCivilianEquipmentForHero(gearSelectionParams);
         }
     }
 }
