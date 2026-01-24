@@ -69,7 +69,7 @@ namespace DynamicLordGear
         float GetHeroSkillAffinity(Hero hero, SkillObject skill)
         {
             float skillAffinity = ((float)hero.GetSkillValue(skill)) / 300.0f;
-            float focusAffinity = ((float)hero.HeroDeveloper.GetFocus(skill)) / 5.0f;
+            float focusAffinity = hero.HeroDeveloper != null ? ((float)hero.HeroDeveloper.GetFocus(skill)) / 5.0f : 0.0f;
             float attributeAffinity = 0.0f;
 
             if (skill.Attributes.Length > 0)

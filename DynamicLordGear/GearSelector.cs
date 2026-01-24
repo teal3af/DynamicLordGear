@@ -786,6 +786,11 @@ namespace DynamicLordGear
 
         internal void SelectGearForHero(GearCache gearCache, LoadoutArchetypes loadoutArchetypes, Hero hero, bool onSessionStart = false)
         {
+            if(hero.IsChild)
+            {
+                return;
+            }
+
             bool undergeared = false;
 
             //If a wanderer called this function, they must have passed a different check. Skip undergeared checks as most of them technically *are*.
